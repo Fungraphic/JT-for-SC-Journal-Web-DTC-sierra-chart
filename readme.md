@@ -77,24 +77,7 @@ Je suis **ouvert à passer le relais** à un(e) maintainer motivé(e).
 
 ## 🗂 Arborescence
 
-.
-| index.html
-|
-+---assets
-|   | icon.ico
-|   | logo.svg
-|   |
-|   +---vendor
-|       | chart.umd.min.js
-|       | chartjs-adapter-date-fns.bundle.min.js
-|       | chartjs-plugin-zoom.min.js
-|       | hammer.min.js
-|
-+---docs
-|   | dashboard_1.png
-|   | dashboard_2.png
-|   | dashboard_3.png
-|   | dashboard_4.png
+![Dossier et Fichiers](docs/tree.png)   
 
 ---
 
