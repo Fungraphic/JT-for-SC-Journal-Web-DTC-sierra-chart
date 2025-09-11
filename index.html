@@ -1,0 +1,3431 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	<meta http-equiv="Content-Security-Policy" content="
+	  default-src 'self' data: blob: https: qrc:;
+	  script-src 'self' 'unsafe-inline' qrc: https://fxverify.com https://*.fxverify.com;
+	  style-src  'self' 'unsafe-inline' qrc: https://fonts.googleapis.com;
+	  font-src   'self' data: qrc: https://fonts.gstatic.com;
+	  img-src    'self' data: https: qrc:;
+	  connect-src 'self' ws: wss: https:;
+	  frame-src  https://fxverify.com https://*.fxverify.com;
+	">	 
+  
+  <title>JT for SC — Journal Web DTC - Version 1.27</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --panel-2: #0f172a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #4f46e5;
+      --accent-2: #7c3aed;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --slate: #475569;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --btn-preset-text: #e5e7eb;
+      --btn-preset-text-hover: #ffffff;
+      --fab-size: 46px;
+      --fab-icon: 32px;
+      --fab-stroke: 2.25;
+    }
+    
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background:
+        radial-gradient(1400px 800px at -10% -10%, rgba(79,70,229,0.30), transparent 60%),
+        radial-gradient(1400px 800px at 110% 10%, rgba(79,70,229,0.12), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.20));
+      background-repeat: no-repeat;
+    }
+    
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo { 
+      width: 64px; 
+      height: 64px; 
+      border-radius: 10px; 
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); 
+      object-fit: cover; 
+      box-shadow: var(--shadow); 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 18px;
+    }
+    
+    .title { font-weight: 700; letter-spacing: 0.2px; }
+    .subtitle { color: var(--muted); font-size: 13px; }
+    
+    .conn-status { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      padding: 12px 16px; 
+      border-left: 4px solid rgba(255,255,255,.06); 
+      margin-left: auto; 
+    }
+    
+    .dot { 
+      width: 10px; 
+      height: 10px; 
+      border-radius: 50%; 
+      background: rgba(255,255,255,.06); 
+      box-shadow: 0 0 0 3px rgba(245,158,11,.2);
+      transition: all 0.3s ease;
+    }
+    .dot.ok { background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+    .dot.err { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+    
+    .conn-text { font-weight: 600; color: var(--text); }
+    
+    .card { 
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); 
+      border: 1px solid rgba(255,255,255,0.06); 
+      border-radius: var(--radius); 
+      box-shadow: var(--shadow); 
+    }
+    
+    .controls {
+      display: grid; 
+      gap: 16px; 
+      padding: 16px; 
+      align-items: end;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    
+    @media (min-width: 1100px) {
+      .controls { grid-template-columns: 1.2fr .7fr .7fr .7fr .5fr auto auto; }
+    }
+    
+    .controls .group { display: flex; flex-direction: column; gap: 8px; }
+    
+    label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    
+    input, select {
+      background: #0f172a;
+      border: 1px solid rgba(148,163,184,0.35);
+      color: #f8fafc;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='%23e5e7eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 36px;
+    }
+    
+    select:focus, input:focus { 
+      border-color: #6366f1; 
+      box-shadow: 0 0 0 3px rgba(99,102,241,.25); 
+    }
+    
+    select option { background-color: #0b1220; color: #e5e7eb; }
+    select::-ms-expand { display: none; }
+    input::placeholder { color: rgba(255,255,255,.5); }
+    
+    .btn { 
+      border: 1px solid rgba(255,255,255,0.12); 
+      border-radius: var(--radius-sm); 
+      background: linear-gradient(135deg, rgba(79,70,229,.5), rgba(255,255,255,.06)); 
+      color: var(--text); 
+      font-weight: 600; 
+      padding: 10px 14px; 
+      cursor: pointer; 
+      transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease; 
+      width: 100%;
+      font-family: inherit;
+    }
+    
+    @media (min-width: 1100px) { 
+      .controls .btn { width: auto; } 
+    }
+    
+    .btn:hover { 
+      transform: translateY(-1px); 
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2); 
+      border-color: rgba(255,255,255,.12); 
+    }
+    .btn:active { transform: translateY(0); }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-ghost { 
+      background: rgba(255,255,255,.06); 
+      border: 1px solid rgba(255,255,255,.06); 
+    }
+    
+    .grid { 
+      display: grid; 
+      grid-template-columns: 1.2fr .8fr; 
+      gap: 16px; 
+      margin-top: 16px; 
+    }
+    
+    /* ZONES DRAGGABLES */
+    .drag-zone { 
+      display: grid; 
+      gap: 12px; 
+      padding: 16px; 
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+    }
+    
+    .kpis.drag-zone { 
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    }
+    
+    /* WIDGETS DRAGGABLES */
+    .widget { 
+      position: relative; 
+      border-radius: var(--radius-sm); 
+      border: 1px solid rgba(255,255,255,.06); 
+      background: rgba(255,255,255,.06);
+      transition: opacity 0.2s ease;
+    }
+
+	/* Header générique pour n'importe quel .widget */
+	.widget-header{
+	  display:flex;align-items:center;justify-content:space-between;
+	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
+	}
+	.widget-title{font-weight:600;font-size:14px;opacity:.9}
+		
+    .widget.dragging { opacity: .65; }
+    
+    .drag-handle { 
+      position: absolute; 
+      top: 8px; 
+      right: 8px; 
+      padding: 4px 6px; 
+      font-size: 12px; 
+      line-height: 1; 
+      border-radius: 8px; 
+      background: rgba(0,0,0,.28); 
+      border: 1px solid rgba(255,255,255,.18); 
+      user-select: none; 
+      cursor: grab; 
+      opacity: 0; 
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    
+    .drag-handle:active { cursor: grabbing; }
+    
+    body.layout-edit .drag-handle { 
+      opacity: 1; 
+      pointer-events: auto; 
+    }
+    
+    .kpi { padding: 14px; }
+    .kpi .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi .value { font-size: 20px; font-weight: 700; }
+    .kpi select { width: 100%; }
+    
+    .chart { padding: 12px; }
+    .chart canvas { 
+      width: 100% !important; 
+      height: 350px !important; 
+      display: block;
+      cursor: crosshair;
+    }
+
+	/* Donuts : garder un cercle parfait malgré le header */
+	[data-widget-id="w-pie-winloss"] canvas,
+	[data-widget-id="w-pie-bysymbol"] canvas,
+	[data-widget-id="w-capital-profit"] canvas{
+	  height: auto !important;   /* annule le 350px */
+	  aspect-ratio: 1 / 1;       /* carré => donut non ovale */
+	}
+
+	/* Style unique pour toutes les barres de titre */
+	.widget-header{
+	  display:flex; align-items:center; justify-content:space-between;
+	  padding:8px 12px; min-height:38px;
+	  border-bottom:1px solid rgba(255,255,255,.06);
+	}
+	.widget-title{
+	  font-weight:600; font-size:14px; letter-spacing:.2px;
+	  color: var(--text) !important; opacity:.95;
+	}
+
+	/* Compense le padding des widgets .chart pour un header bord-à-bord */
+	.chart.widget .widget-header{
+	  margin: -12px -12px 8px;     /* annule le padding externe du widget */
+	  padding: 8px 12px;           /* garde la même hauteur que Adv. Stats */
+	}
+		
+    @media (max-width: 640px) { 
+      .chart canvas { height: 200px !important; } 
+    }
+    
+    .chart-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-bottom: 6px;
+    }
+    
+    .chart-actions .btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      width: auto;
+    }
+    
+    .table-wrap { padding: 12px; overflow-x: auto; }
+    .table-wrap table { 
+      width: 100%; 
+      min-width: 900px; 
+      border-collapse: collapse; 
+      font-size: 13px; 
+    }
+    
+    thead th { 
+      text-align: left; 
+      font-weight: 600; 
+      color: var(--muted); 
+      padding: 8px; 
+      border-bottom: 1px solid rgba(255,255,255,.06); 
+    }
+    
+    tbody td { 
+      padding: 10px 8px; 
+      border-bottom: 1px solid rgba(255,255,255,.06); 
+    }
+    
+    tbody tr:hover { background: rgba(255,255,255,.08); }
+    
+    .empty { 
+      padding: 16px; 
+      text-align: center; 
+      color: var(--muted); 
+    }
+    
+    footer { 
+      margin-top: 18px; 
+      text-align: right; 
+      font-size: 12px; 
+      color: rgba(255,255,255,.6); 
+    }
+    
+    .pill { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 8px; 
+      border: 1px solid rgba(255,255,255,.12); 
+      padding: 6px 10px; 
+      border-radius: 9999px; 
+      font-size: 12px; 
+      color: var(--text); 
+      background: linear-gradient(135deg, rgba(79,70,229,.08), rgba(255,255,255,.1)); 
+    }
+    
+    .pill strong { color: var(--text); }
+    
+    #advStatsList { 
+      overflow-wrap: anywhere; 
+      word-break: break-word; 
+      white-space: normal; 
+    }
+    
+    @media (max-width: 1000px) { 
+      .grid { grid-template-columns: 1fr; } 
+    }
+    
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading .spinner {
+      margin-right: 8px;
+    }
+    
+    /* Settings Drawer & FAB */
+    .fab-settings {
+      position: fixed;
+      right: 18px;
+      bottom: 20px;
+      z-index: 70;
+      border: 1px solid rgba(255,255,255,.15);
+      background: linear-gradient(135deg, rgba(79,70,229,.9), rgba(124,58,237,.7));
+      color: #fff;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      width: var(--fab-size);
+      height: var(--fab-size);
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      font-size: 0;
+      transition: transform 0.2s ease;
+    }
+    
+    .fab-settings:hover { transform: translateY(-2px); }
+    
+    .fab-settings svg {
+      width: var(--fab-icon);
+      height: var(--fab-icon);
+      display: block;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: var(--fab-stroke);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      shape-rendering: geometricPrecision;
+    }
+    
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      backdrop-filter: saturate(120%) blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 59;
+    }
+    
+    .settings-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .settings-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 410px;
+      max-width: 92vw;
+      background: var(--panel-2);
+      border-left: 1px solid rgba(255,255,255,.08);
+      box-shadow: var(--shadow);
+      transform: translateX(100%);
+      transition: transform .25s ease;
+      z-index: 60;
+      color: var(--text);
+    }
+    
+    .settings-drawer.open { transform: translateX(0); }
+    
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    
+    .settings-title { font-weight: 700; }
+    
+    .settings-close {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background-color 0.2s ease;
+    }
+    
+    .settings-close:hover {
+      background: rgba(255,255,255,.1);
+    }
+    
+    .settings-content {
+      padding: 14px 14px 80px;
+      overflow: auto;
+      height: calc(100% - 52px);
+    }
+    
+    .section { margin-bottom: 16px; }
+    .section h4 { 
+      margin: 10px 0 8px 0; 
+      font-size: 13px; 
+      color: var(--muted); 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .setting-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .setting-row input[type="color"] {
+      width: 38px;
+      height: 28px;
+      border: 1px solid rgba(255,255,255,.2);
+      background: transparent;
+      border-radius: 6px;
+      padding: 0;
+      cursor: pointer;
+    }
+    
+    .setting-row input[type="text"] {
+      width: 110px;
+      background: #0f172a;
+      border: 1px solid rgba(148,163,184,0.35);
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    
+    .palette-item {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    
+    .preset {
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.06);
+      cursor: pointer;
+      text-align: center;
+      font-size: 12px;
+      color: var(--btn-preset-text);
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    
+    .preset:hover,
+    .preset:focus {
+      background: rgba(255,255,255,.1);
+      color: var(--btn-preset-text-hover);
+      outline: none;
+      transform: translateY(-1px);
+    }
+    
+    .toggle { 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 8px; 
+      font-size: 13px; 
+    }
+    
+    .toggle input[type="checkbox"] {
+      width: auto;
+      accent-color: var(--accent);
+    }
+    
+    /* Status messages */
+    .status-message {
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      margin: 8px 0;
+      display: none;
+    }
+    
+    .status-message.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+    }
+    
+    .status-message.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+    
+    .status-message.warning {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #f59e0b;
+    }  
+	/* Header générique pour n'importe quel .widget */
+	.widget-header{
+	  display:flex;align-items:center;justify-content:space-between;
+	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
+	}
+	.widget-title{font-weight:600;font-size:14px;opacity:.9}
+
+	/* ===== FF News — USD (High/Med) ===== */
+	#zone-news { grid-template-columns: 1fr; } /* pleine largeur */
+	#zone-news .widget { 
+		padding:10px 12px; 
+		border-radius:12px; 
+		background:rgba(255,255,255,.03);
+		border:1px solid rgba(255,255,255,.06);
+	}
+
+	/* Voyant de rafraîchissement (sans décalage de layout) */
+	.refresh-led{
+		width:10px;height:10px;border-radius:50%;
+		display:inline-block;margin-left:8px;vertical-align:-1px;
+		background:rgba(255,255,255,.18);
+		box-shadow:0 0 0 3px rgba(148,163,184,.15);
+		transition:background .15s ease, box-shadow .15s ease, opacity .15s ease;
+	}
+	.refresh-led.on-green{ background:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,.25); }
+	.refresh-led.on-red{   background:var(--red);   box-shadow:0 0 0 3px rgba(239,68,68,.25); }
+
+	/* animation de pulse pour l'état "actif" */
+	@keyframes led-pulse {
+		0%, 100% { transform: scale(1);   opacity: .95; }
+		50%      { transform: scale(1.25); opacity: 1;   }
+	}
+	.refresh-led.pulse { animation: led-pulse 1s ease-in-out infinite; }
+						
+	/* Calendrier fxverify — pas de scroll interne, hauteur auto */
+	.widget[data-widget-id="w-eco-cal"]{
+		padding: 0 !important;
+		height: auto !important;
+		max-height: none !important;
+		overflow: visible !important;
+	}
+
+	#economic-calendar-819954{
+		min-height: 0 !important;
+		height: auto !important;
+		overflow: visible !important;
+	}
+
+	/* === Modes du calendrier === */
+	/* Mode compact : hauteur fixe + scroll interne sur #ec-scroller */
+	.widget[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller{
+	  height: clamp(200px, 55vh, 280px) !important;
+	  overflow: auto !important;
+	  overscroll-behavior: contain;
+	  -webkit-overflow-scrolling: touch;
+	  scrollbar-width: none;
+	}
+	.widget[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller::-webkit-scrollbar{ width: 0; height: 0; }
+
+	/* Mode dépliable : hauteur auto (pas de scroll interne) */
+	.widget[data-widget-id="w-eco-cal"].collapsible #ec-scroller{
+	  height: auto !important;
+	  overflow: visible !important;
+	}
+
+	/* Enrobage visuel pour le header du mode dépliable */
+	.widget.collapsible .widget-header{
+	  display:flex; align-items:center; justify-content:space-between;
+	  gap:10px; padding:8px 12px;
+	  border-bottom:1px solid rgba(255,255,255,.06);
+	}
+	.widget.collapsible .widget-title{ font-size:13px; font-weight:600; color:var(--text); }
+	.widget.collapsible .toggle-collapse{
+	  background:rgba(255,255,255,.06);
+	  border:1px solid rgba(255,255,255,.12);
+	  color:var(--text); font-size:12px; font-weight:600;
+	  border-radius:10px; padding:6px 10px; cursor:pointer;
+	}
+	.widget.collapsible .toggle-collapse:hover{ background:rgba(255,255,255,.10); }
+
+	/* Animation douce de repli */
+	#ec-scroller{ transition: height .2s ease; }
+	/* État replié (collapsible) */
+	.widget.collapsible[data-collapsed="1"] #ec-scroller{
+	  height:0 !important; overflow:hidden !important; padding:0 !important; margin:0 !important;
+	}
+	.widget.collapsible[data-collapsed="1"] .widget-content{ padding:0 !important; }
+
+	/* Le widget calendrier n'a pas de padding externe */
+	#zone-news [data-widget-id="w-eco-cal"]{ padding:0 !important; }
+
+	/* Header simple du calendrier */
+	[data-widget-id="w-eco-cal"] .widget-header{
+	  display:flex;align-items:center;justify-content:space-between;
+	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
+	}
+	[data-widget-id="w-eco-cal"] .widget-title{font-weight:600;font-size:14px;opacity:.9}
+	[data-widget-id="w-eco-cal"] .toggle-collapse{
+	  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+	  color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font:600 12px/1 Inter,system-ui;
+	}
+	[data-widget-id="w-eco-cal"] .toggle-collapse:hover{background:rgba(255,255,255,.1)}
+
+	/* === Settings — Accordéon par sections === */
+	.settings-content .section{
+	  margin:10px 0;
+	  border:1px solid rgba(255,255,255,.08);
+	  border-radius:12px;
+	  background:rgba(255,255,255,.04);
+	  overflow:hidden;
+	}
+	.section .acc-header{
+	  width:100%;
+	  display:flex;align-items:center;justify-content:space-between;gap:8px;
+	  padding:10px 12px;
+	  background:rgba(255,255,255,.02);
+	  border:0; cursor:pointer; text-align:left;
+	  font-weight:700; font-size:13px; color:var(--text);
+	}
+	.section .acc-header .acc-caret{
+	  width:16px; height:16px; flex:0 0 auto;
+	  transition:transform .2s ease, opacity .2s ease;
+	  opacity:.9;
+	}
+	.section .acc-header[aria-expanded="false"] .acc-caret{ transform:rotate(-90deg); opacity:.7; }
+	.section .acc-body{
+	  padding:12px 14px;
+	  border-top:1px solid rgba(255,255,255,.06);
+	}
+	.section.collapsed .acc-body{ display:none; }
+
+	/* petits boutons outils dans l’entête du tiroir */
+	.settings-tools{
+	  display:flex; gap:8px; align-items:center; margin-left:auto;
+	}
+	.settings-tools .mini{
+	  background:rgba(255,255,255,.06);
+	  border:1px solid rgba(255,255,255,.12);
+	  color:var(--text);
+	  border-radius:8px; padding:6px 8px;
+	  font:600 12px/1 Inter,system-ui;
+	  cursor:pointer;
+	}
+	.settings-tools .mini:hover{ background:rgba(255,255,255,.1); }
+
+	/* Overlay et drawer tout en haut de la pile */
+	.settings-overlay { z-index: 9998; }
+	.settings-drawer  { z-index: 9999; }
+
+	/* Le FAB doit passer derrière l’overlay, ou disparaître quand le tiroir est ouvert */
+	.fab-settings { z-index: 9980; }
+
+	/* Option : cacher/neutraliser le FAB quand le tiroir est ouvert */
+	body.drawer-open .fab-settings {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	/* Option : bloquer le scroll de la page quand le tiroir est ouvert */
+	body.drawer-open { overflow: hidden; }
+
+	/* Ceinture et bretelles : si le calendrier a un z-index délirant,
+		 on le remet sous l’overlay UNIQUEMENT quand le tiroir est ouvert */
+	body.drawer-open #economic-calendar-819954 * { z-index: 0 !important; }
+						
+  </style>
+	<style id="donut-fixes">
+	  :root{
+		--donut-min: 120px;
+		--donut-max: 240px;   /* ajuste selon le rendu souhaité */
+	  }
+
+	  /* Donuts : ronds, centrés, et limités en taille */
+	  [data-widget-id="w-pie-winloss"] canvas,
+	  [data-widget-id="w-pie-bysymbol"] canvas,
+	  [data-widget-id="w-capital-profit"] canvas{
+		width: clamp(var(--donut-min), 90%, var(--donut-max)) !important; 
+		height: auto !important;      /* remplace le 350px */
+		aspect-ratio: 1 / 1;          /* cercle parfait */
+		display: block;
+		margin: 30px auto 30px;        /* centré */
+	  }
+	</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img class="logo" src="assets/logo.svg" alt="JT for SC" />
+        <div>
+          <div class="title">JT for SC — Journal Web DTC</div>
+          <div class="subtitle">Connexion directe au serveur DTC de Sierra Chart</div>
+        </div>
+      </div>
+      <div class="conn-status card">
+        <div class="dot" id="connDot"></div>
+        <div class="conn-text" id="connText">Déconnecté</div>
+        <span class="refresh-led" id="refreshLed" title="Rafraîchissement"></span><span style="font-size:12px;color:var(--muted);margin-left:8px">Refresh</span>
+        
+
+      </div>
+    </header><!-- ZONE NEWS -->
+    
+    <div id="statusMessage" class="status-message"></div>
+    
+    <section class="card">
+      <div class="controls">
+        <div class="group">
+          <label for="dtcUrl">DTC WebSocket URL</label>
+          <input id="dtcUrl" placeholder="ws://127.0.0.1:11099" value="ws://192.168.1.53:11099" />
+        </div>
+        <div class="group">
+          <label for="tradeAccount">Trade Account (optionnel)</label>
+          <input id="tradeAccount" placeholder="ex: Sim1 / 12345" />
+        </div>
+        <div class="group">
+          <label for="fromDate">Historique — de Début</label>
+          <input id="fromDate" type="date" />
+        </div>
+        <div class="group">
+          <label for="toDate">Historique — de Fin</label>
+          <input id="toDate" type="date" />
+        </div>
+        <div class="group">
+          <label for="maxFills">Max Trades affichés</label>
+          <input id="maxFills" type="number" value="1000" min="1" />
+        </div>
+        <button class="btn" id="btnConnect">
+          <span class="btn-text">Connexion</span>
+        </button>
+        <button class="btn btn-ghost" id="btnDisconnect">Stop</button>
+      </div>
+      
+      <!-- ZONE KPI -->
+      <div class="kpis drag-zone" id="zone-kpis">
+        <div class="kpi widget" data-widget-id="w-kpi-account">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <div class="label">Compte</div>
+          <select id="accountSelect"><option value="" selected>— Sélectionner —</option></select>
+        </div>
+        <div class="kpi widget" data-widget-id="w-kpi-balance">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <div class="label">Balance</div>
+          <div class="value" id="kpiBalance">—</div>
+        </div>
+        <div class="kpi widget" data-widget-id="w-kpi-available">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <div class="label">Gains Total</div>
+          <div class="value" id="kpiAvailable">—</div>
+        </div>
+        <div class="kpi widget" data-widget-id="w-kpi-dailypl">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <div class="label">PnL journalier</div>
+          <div class="value" id="kpiDailyPL">—</div>
+        </div>
+      </div>
+
+<!-- ZONE NEWS — fxverify (hauteur fixée, scroll interne) -->
+<style>
+	#zone-news [data-widget-id="w-eco-cal"]{ padding: 0 !important; }
+
+	/* Base : on laisse le widget interne libre de grandir */
+	#economic-calendar-819954{ min-height: 0 !important; }
+
+	/* === MODE COMPACT (par défaut) — hauteur fixe + scroll interne === */
+	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller{
+	  height: clamp(200px, 55vh, 280px) !important;
+	  overflow: auto !important;
+	  overscroll-behavior: contain;
+	  -webkit-overflow-scrolling: touch;
+	  scrollbar-width: none;
+	  -ms-overflow-style: none;
+	}
+	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller::-webkit-scrollbar{
+	  width: 0; height: 0;
+	}
+
+	/* === MODE COMPACT + AUTOFIT — s’adapte à la hauteur des news (pas de scroll interne) === */
+	[data-widget-id="w-eco-cal"].calendar--compact.autofit #ec-scroller{
+	  height: auto !important;
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+
+	/* === MODE COLLAPSIBLE — quand ouvert, pas de scroll interne (taille auto) === */
+	[data-widget-id="w-eco-cal"].collapsible #ec-scroller{
+	  height: auto !important;
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+
+	/* On neutralise les conteneurs scroll internes du widget fxverify */
+	#economic-calendar-819954 .notablescroll,
+	#economic-calendar-819954 .content_table,
+	#economic-calendar-819954 .ec-fx-calendar-table,
+	#economic-calendar-819954 .ec-fx-table-container{
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+</style>
+
+<div class="drag-zone" id="zone-news">
+  <div class="widget" data-widget-id="w-eco-cal">
+    <div class="drag-handle" title="Déplacer">⋮⋮</div>
+    <div id="ec-scroller">
+      <div id="economic-calendar-819954-inner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Script fxverify + init -->
+<script src="https://fxverify.com/Content/remote/remote-calendar-widget.js" type="text/javascript"></script>
+
+<script>
+/* Override: ne plus forcer la hauteur de l’iframe au viewport */
+(function () {
+  window.resizeCalendarWidget = function (data) {
+    var containerId = data.containerId;
+    var targetHeight = Math.max(0, Math.ceil(data.targetHeight || 0));
+    var menuHeight = data.menuHeaderHeight || 0;
+
+    var ifrms = document.querySelectorAll('iframe[calendar-id=ifrm-cbf-' + containerId + ']');
+    for (var i = 0; i < ifrms.length; i++) {
+      var rect = ifrms[i].getBoundingClientRect();
+      var offsetLeft = rect.left;
+      var offsetTop = rect.top;
+
+      // ✅ hauteur EXACTE remontée par l'iframe (pas de fallback viewport)
+      var frameHeight = targetHeight;
+      ifrms[i].style.height = frameHeight + 'px';
+
+      // Informe l’iframe de la géométrie (comme la version d’origine)
+      try {
+        ifrms[i].contentWindow.postMessage({
+          type: 'onLayoutChange',
+          data: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            frameHeight: frameHeight,
+            offsetLeft: offsetLeft,
+            offsetTop: offsetTop,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY
+          }
+        }, '*');
+      } catch (e) {}
+
+      // Ajuste les conteneurs “sticky” du script fxverify
+      var headers = document.querySelectorAll('#' + containerId + '-container .stickyContainer');
+      for (var j = 0; j < headers.length; j++) {
+        var header = headers[j];
+        header.style.top = menuHeight + 'px';
+        var headerHeight = frameHeight - menuHeight;
+        header.style.height = headerHeight + 'px';
+
+        var headerElem = header.getElementsByClassName('stickyHeader')[0];
+        var contentElem = header.getElementsByClassName('stickyContent')[0];
+        if (headerElem && contentElem) {
+          var h = headerElem.offsetHeight;
+          if (h > 0) contentElem.style.top = h + 'px';
+        }
+      }
+    }
+  };
+})();
+</script>
+
+<script>
+	RemoteCalendar({
+		Lang:"fr",
+		DefaultTime:"today",
+		DefaultTheme:"dark",
+		Url:"https://fxverify.com",
+		SubPath:"economic-calendar",
+		IsShowEmbedButton:false,
+		DefaultCountries:"USD",
+		DefaultImpacts:"HIGH,MEDIUM",
+		ContainerId:"economic-calendar-819954-inner"
+	});
+
+</script>
+
+      <!-- ZONE CHARTS 1 -->
+      <div class="drag-zone" id="zone-charts-1">
+        <div class="chart widget" data-widget-id="w-pie-winloss">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <canvas id="pieWinLoss"></canvas>
+        </div>
+        <div class="chart widget" data-widget-id="w-pie-bysymbol">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <canvas id="pieBySymbol"></canvas>
+        </div>
+      </div>
+      
+      <!-- ZONE EQUITY -->
+      <div class="drag-zone" id="zone-equity">
+        <div class="chart widget" data-widget-id="w-equity">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <div class="chart-actions">
+            <button class="btn btn-ghost" id="btnResetZoom" title="Réinitialiser le zoom et la position du graphique">
+              🔍 Réinitialiser
+            </button>
+            <button class="btn btn-ghost" id="btnRetryZoom" title="Réessayer d'activer le plugin zoom" style="display: none;">
+              🔄 Activer Zoom
+            </button>
+            <div style="font-size: 11px; color: var(--muted); margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <span>💡 <strong>Survolez</strong> les points pour voir les détails</span>
+              <span>•</span>
+              <span><strong>Molette</strong> pour zoomer</span>
+              <span>•</span>
+              <span id="panInstructions"><strong>SHIFT + clic-maintenir-glisser</strong> pour déplacer</span>
+            </div>
+          </div>
+          <canvas id="equityCurve"></canvas>
+        </div>
+      </div>
+      
+      <!-- ZONE CHARTS 2 -->
+      <div class="drag-zone" id="zone-charts-2">
+        <div class="chart widget" data-widget-id="w-capital-profit">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <canvas id="pieCapitalProfit"></canvas>
+        </div>
+		<div class="widget" data-widget-id="w-adv-stats" id="advStatsCard">
+		  <div class="drag-handle" title="Déplacer" style="position:absolute;top:8px;right:8px;">⋮⋮</div>
+		  <div class="widget-header">
+			<div class="widget-title">Statistiques Avancées</div>
+		  </div>
+		  <div id="advStatsList" style="width:100%;max-width:520px;font-size:13px;line-height:1.4;padding:16px;"></div>
+		</div>
+
+      </div>
+      
+      <!-- ZONE TABLE (TRADES AGRÉGÉS) -->
+      <div class="drag-zone" id="zone-trades">
+        <div class="table-wrap widget" data-widget-id="w-trades">
+          <div class="drag-handle" title="Déplacer">⋮⋮</div>
+          <table id="tradesTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Open</th>
+                <th>Close</th>
+                <th>Symbole</th>
+                <th>Side</th>
+                <th>Qté</th>
+                <th>Prix entrée</th>
+                <th>Prix sortie</th>
+                <th>PnL (réalisé)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="empty" id="emptyMsg">Aucun trade pour le moment.</div>
+        </div>
+      </div>
+    </section>
+    
+    <footer>
+      <span class="pill">Statut: <strong id="statusPill">Prêt</strong></span>
+    </footer>
+    
+    <!-- Settings Floating Button -->
+    <button id="openSettings" class="fab-settings" title="Paramètres" aria-label="Paramètres">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
+                 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51
+                 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06
+                 a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+                 a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06
+                 a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9
+                 c.66 0 1.26-.39 1.51-1V3a2 2 0 0 1 4 0v.09c0 .66.39 1.26 1 1.51
+                 a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06
+                 c-.47.47-.6 1.17-.33 1.78.27.61.88 1 1.54 1.09H21a2 2 0 0 1 0 4h-.09
+                 a1.65 1.65 0 0 0-1.51 1Z"></path>
+      </svg>
+    </button>
+    
+    <div id="settingsOverlay" class="settings-overlay"></div>
+    <aside id="settingsDrawer" class="settings-drawer" aria-hidden="true">
+      <div class="settings-header">
+        <div class="settings-title">Paramètres</div>
+        <button id="closeSettings" class="settings-close">Fermer</button>
+      </div>
+      <div class="settings-content">
+        <div class="section">
+          <h4>Thème global Couleurs</h4>
+          <div class="setting-row"><label>Fond (--bg)</label><input type="color" data-var="--bg"><input type="text" data-var-input="--bg" placeholder="#0b0f17"></div>
+          <div class="setting-row"><label>Panneau (--panel)</label><input type="color" data-var="--panel"><input type="text" data-var-input="--panel" placeholder="#111827"></div>
+          <div class="setting-row"><label>Panneau 2 (--panel-2)</label><input type="color" data-var="--panel-2"><input type="text" data-var-input="--panel-2" placeholder="#0f172a"></div>
+          <div class="setting-row"><label>Texte (--text)</label><input type="color" data-var="--text"><input type="text" data-var-input="--text" placeholder="#e5e7eb"></div>
+          <div class="setting-row"><label>Muté (--muted)</label><input type="color" data-var="--muted"><input type="text" data-var-input="--muted" placeholder="#9ca3af"></div>
+          <div class="setting-row"><label>Accent 1 (--accent)</label><input type="color" data-var="--accent"><input type="text" data-var-input="--accent" placeholder="#4f46e5"></div>
+          <div class="setting-row"><label>Accent 2 (--accent-2)</label><input type="color" data-var="--accent-2"><input type="text" data-var-input="--accent-2" placeholder="#7c3aed"></div>
+          <div class="setting-row"><label>Vert (--green)</label><input type="color" data-var="--green"><input type="text" data-var-input="--green" placeholder="#22c55e"></div>
+          <div class="setting-row"><label>Rouge (--red)</label><input type="color" data-var="--red"><input type="text" data-var-input="--red" placeholder="#ef4444"></div>
+          <div class="setting-row"><label>Ambre (--amber)</label><input type="color" data-var="--amber"><input type="text" data-var-input="--amber" placeholder="#f59e0b"></div>
+          <div class="setting-row"><label>Ardoise (--slate)</label><input type="color" data-var="--slate"><input type="text" data-var-input="--slate" placeholder="#475569"></div>
+          <div class="setting-row"><label>Texte boutons preset</label><input type="color" data-var="--btn-preset-text"><input type="text" data-var-input="--btn-preset-text" placeholder="#e5e7eb"></div>
+          <div class="setting-row"><label>Texte (hover)</label><input type="color" data-var="--btn-preset-text-hover"><input type="text" data-var-input="--btn-preset-text-hover" placeholder="#ffffff"></div>
+        </div>
+        
+        <div class="section">
+          <h4>Palette Donuts (par symbole)</h4>
+          <div class="palette-grid" id="paletteGrid"></div>
+        </div>
+        
+        <div class="section">
+          <h4>Disposition</h4>
+          <label class="toggle">
+            <input type="checkbox" id="layoutEditToggle"> Mode édition (déplacer les widgets)
+          </label>
+          <div style="margin-top:8px">
+            <button class="preset" id="resetLayoutBtn">Réinitialiser la disposition</button>
+          </div>
+        </div>
+
+		<div class="section">
+		  <h4>Calendrier</h4>
+		  <div class="setting-row" style="grid-template-columns: 1fr auto;">
+			<label for="calendarMode">Mode d’affichage</label>
+			<select id="calendarMode">
+			  <option value="compact" selected>Compact (scroll interne)</option>
+			  <option value="collapsible">Dépliable (pliable/dépliable)</option>
+			</select>
+			<label class="toggle" id="calendarAutofitRow" style="display:none; margin-top:6px;">
+			  <input type="checkbox" id="calendarAutofit">
+			  Ajuster la hauteur automatiquement (compact)
+			</label>
+						
+		  </div>
+		  <label class="toggle" id="calendarCollapsedRow" style="display:none; margin-top:6px;">
+			<input type="checkbox" id="calendarDefaultCollapsed">
+			Replié par défaut
+		  </label>
+		</div>
+        
+        <div class="section">
+          <h4>Presets de Couleurs</h4>
+          <div class="preset-grid">
+            <button class="preset" data-preset="indigo">Indigo</button>
+            <button class="preset" data-preset="emerald">Émeraude</button>
+            <button class="preset" data-preset="amber">Ambre</button>
+            <button class="preset" data-preset="rose">Rose</button>
+            <button class="preset" data-preset="cyber">Cyber</button>
+            <button class="preset" data-reset>Réinitialiser</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+<!-- Librairies (UMD) -->
+<script defer src="./assets/vendor/chart.umd.min.js"></script>
+<script defer src="./assets/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script defer src="./assets/vendor/hammer.min.js"></script>
+<script defer src="./assets/vendor/chartjs-plugin-zoom.min.js"></script>
+
+<!-- Bootstrap Zoom (UMD = auto-enregistré) -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const hasZoom = !!(window.Chart && Chart.registry?.plugins?.get?.('zoom'));
+    window.__ZOOM_OK__ = hasZoom;
+    window.dispatchEvent(new CustomEvent('zoom:status', { detail: { ok: hasZoom } }));
+  });
+</script>
+<!-- Script principal -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  'use strict';
+
+	// Masquer toutes les bannières non-critique pour éviter le "clignotement"
+	const SUPPRESS_NON_ERROR_BANNERS = true;
+
+	// Voyant (vert = en cours, rouge bref = terminé, rouge pulsant = erreur)
+	const __refresh = { state: 'idle', t0: 0, redTimer: null };
+
+	function setRefreshIndicator(mode) {
+		const led = document.querySelector('#refreshLed');
+		if (!led) return;
+		const now = Date.now();
+
+		const setClass = (classes) => {
+			led.classList.remove('on-green','on-red','pulse');
+			classes.forEach(c => led.classList.add(c));
+		};
+
+		if (mode === 'active') {
+			clearTimeout(__refresh.redTimer);
+			__refresh.state = 'active';
+			__refresh.t0 = now;
+			setClass(['on-green','pulse']);        // vert pulsant (bien visible)
+			return;
+		}
+
+		if (mode === 'done') {
+			const minActive = 1000;                 // au moins 250ms de vert visible
+			const showRed = () => {
+				setClass(['on-red']);                // rouge bref
+				__refresh.redTimer = setTimeout(() => setClass([]), 1000);
+				__refresh.state = 'idle';
+			};
+			const elapsed = now - __refresh.t0;
+			if (__refresh.state === 'active' && elapsed < minActive) {
+				setTimeout(showRed, minActive - elapsed);
+			} else {
+				showRed();
+			}
+			return;
+		}
+
+		if (mode === 'error') {
+			clearTimeout(__refresh.redTimer);
+			__refresh.state = 'error';
+			setClass(['on-red','pulse']);          // rouge pulsant persistant
+			return;
+		}
+
+		// idle/reset
+		clearTimeout(__refresh.redTimer);
+		__refresh.state = 'idle';
+		setClass([]);
+	}
+
+  // === UTILITIES COURTES ===
+  const qs  = (sel) => document.querySelector(sel);
+  const qsa = (sel) => document.querySelectorAll(sel);
+
+  // Détection centralisée du plugin zoom (UMD auto-register)
+  function ensureZoomStatus() {
+    const ok = !!(window.Chart && Chart.registry?.plugins?.get?.('zoom'));
+    window.__ZOOM_OK__ = ok;
+    return ok;
+  }
+  function setRetryZoomVisibility() {
+    const btn = qs('#btnRetryZoom');
+    if (!btn) return;
+    btn.style.display = window.__ZOOM_OK__ ? 'none' : 'inline-block';
+  }
+
+  // Event envoyé par le bootstrap
+  window.addEventListener('zoom:status', (e) => {
+    setRetryZoomVisibility();
+    if (e?.detail?.ok && typeof window.reconfigureEquityChart === 'function') {
+      window.reconfigureEquityChart();
+    }
+  });
+
+  // === CORRECTION CONSOLE.ASSERT EN PREMIER ===
+  if (typeof console.assert !== 'function') {
+    console.assert = function(condition, message) {
+      if (!condition) {
+        console.error('Assertion failed:', message);
+      }
+    };
+  }
+  
+  // === UTILITIES EXISTANTES ===
+	// === LATENCE (RTT approx) & DRIFT HORLOGE ===
+	let lastPingAt = null;
+
+	/** Envoie un heartbeat (Type:3) et mémorise le t0 pour le calcul de la latence */
+	function ping() {
+	  lastPingAt = performance.now();
+	  if (client && client.ws && client.ws.readyState === 1) {
+		client.send({ Type: 3 }); // DTC Heartbeat
+	  }
+	}
+
+	/** Mesure la latence “grossière” = temps depuis le dernier ping jusqu’au prochain message */
+	function updateLatency() {
+	  if (lastPingAt == null) return;
+	  const ms = Math.max(0, performance.now() - lastPingAt);
+	  const el = document.getElementById('latency');
+	  if (el) el.textContent = `⏱ ${ms.toFixed(0)} ms`;
+	}
+
+	/** Vérifie l’écart d’horloge entre timestamps DTC (en secondes) et l’horloge locale */
+	function checkClockDrift(dtcSec) {
+	  if (!Number.isFinite(dtcSec)) return;
+	  const drift = (Date.now() / 1000) - dtcSec; // positif = horloge locale “en avance”
+	  if (Math.abs(drift) > 2) {
+		// Affiche une info dans le pill de statut (tu peux faire plus discret si tu veux)
+		const pill = document.getElementById('statusPill');
+		if (pill) pill.textContent = `Drift horloge ${drift.toFixed(1)}s`;
+	  }
+	}
+
+	// Ping régulier (toutes les 15s). S’il n’y a pas de connexion, ça ne fait rien.
+	setInterval(ping, 15000);
+	  
+	function showStatusMessage(message, type = 'info', duration = 5000) {
+		if (SUPPRESS_NON_ERROR_BANNERS && type !== 'error') return; // ← ajout
+		const statusEl = document.querySelector('#statusMessage');
+		if (!statusEl) return;
+		statusEl.textContent = message;
+		statusEl.className = `status-message ${type}`;
+		statusEl.style.display = 'block';
+		if (duration > 0) setTimeout(() => { statusEl.style.display = 'none'; }, duration);
+	}
+
+  function setStatus(ok, text, error = false) {
+    const dot = qs('#connDot');
+    const textEl = qs('#connText');
+    if (!dot || !textEl) return;
+    dot.classList.toggle('ok', ok && !error);
+    dot.classList.toggle('err', error);
+    textEl.textContent = text || (ok ? 'Connecté' : 'Déconnecté');
+  }
+  function setButtonLoading(button, loading = true) {
+    if (!button) return;
+    const textEl = button.querySelector('.btn-text') || button;
+    const originalText = button.dataset.originalText || textEl.textContent;
+    if (!button.dataset.originalText) button.dataset.originalText = originalText;
+    if (loading) {
+      button.disabled = true;
+      button.classList.add('loading');
+      textEl.innerHTML = '<span class="spinner"></span>Connexion...';
+    } else {
+      button.disabled = false;
+      button.classList.remove('loading');
+      textEl.textContent = originalText;
+    }
+  }
+  function sanitizeChunk(s) {
+    return typeof s === 'string' ? 
+      s.replace(/\uFEFF/g, '').replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/g, '') : '';
+  }
+  function safeNumber(value, defaultValue = 0) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : defaultValue;
+  }
+  function safeString(value, defaultValue = '') {
+    return typeof value === 'string' ? value.trim() : String(value || defaultValue);
+  }
+  const isSimAccountName = (name) => /^sim\d*$/i.test(name || '');
+  function sideFrom(v) {
+    if (typeof v === 'string') {
+      const s = v.trim().toUpperCase();
+      if (s === 'B' || s === 'BUY') return 1;
+      if (s === 'S' || s === 'SELL') return -1;
+    }
+    if (v === 1) return 1;
+    if (v === 2) return -1;
+    return 0;
+  }
+  const sideLabelFrom = v => {
+    const side = sideFrom(v);
+    return side === 1 ? 'Buy' : side === -1 ? 'Sell' : '—';
+  };
+
+  // === DTC CLIENT
+  class DTCClient {
+    constructor(url) {
+      this.url = url;
+      this.ws = null;
+      this._rxBuffer = '';
+      this._hbTimer = null;
+      this._hbIntervalSec = 30;
+      this.onOpen = () => {};
+      this.onClose = () => {};
+      this.onError = () => {};
+      this.onMessage = () => {};
+    }
+    connect() {
+      try { this.ws = new WebSocket(this.url); }
+      catch (e) { this.onError(e); return; }
+      this.ws.addEventListener('open', () => this.onOpen());
+      this.ws.addEventListener('close', ev => this.onClose(ev));
+      this.ws.addEventListener('error', e => this.onError(e));
+      this.ws.addEventListener('message', ev => {
+        const d = ev.data;
+        if (typeof d === 'string') this._processChunk(d);
+        else if (d instanceof Blob) d.text().then(t => this._processChunk(t));
+        else if (d instanceof ArrayBuffer) this._processChunk(new TextDecoder('utf-8').decode(d));
+      });
+    }
+    send(obj) {
+      if (this.ws && this.ws.readyState === 1) {
+        this.ws.send(JSON.stringify(obj) + '\u0000');
+      }
+    }
+    startHeartbeat() {
+      if (this._hbTimer) clearInterval(this._hbTimer);
+      this._hbTimer = setInterval(() => this.send({Type: 3}), this._hbIntervalSec * 1000);
+    }
+    close() {
+      if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
+      if (this.ws) this.ws.close();
+      this.ws = null;
+    }
+    _processChunk(chunk) {
+      const clean = sanitizeChunk(chunk);
+      this._rxBuffer += clean;
+      let made = true;
+      while (made) {
+        made = false;
+        let i0 = this._rxBuffer.indexOf('\u0000');
+        if (i0 !== -1) {
+          const part = this._rxBuffer.slice(0, i0).trim();
+          this._rxBuffer = this._rxBuffer.slice(i0 + 1);
+          if (part) this._emitJson(part);
+          made = true;
+          continue;
+        }
+        let iN = this._rxBuffer.indexOf('\n');
+        if (iN !== -1) {
+          const part = this._rxBuffer.slice(0, iN).trim();
+          this._rxBuffer = this._rxBuffer.slice(iN + 1);
+          if (part) this._emitJson(part);
+          made = true;
+          continue;
+        }
+        const ex = this._extractOneJson(this._rxBuffer);
+        if (ex) {
+          const [part, rest] = ex;
+          this._rxBuffer = rest;
+          if (part) this._emitJson(part);
+          made = true;
+        }
+      }
+    }
+    _extractOneJson(s) {
+      let depth = 0, start = -1, inStr = false, esc = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (inStr) { if (esc) { esc = false; continue; } if (ch === '\\') { esc = true; continue; } if (ch === '"') inStr = false; continue; }
+        if (ch === '"') { inStr = true; continue; }
+        if (ch === '{') { if (depth === 0) start = i; depth++; }
+        else if (ch === '}') { depth--; if (depth === 0 && start !== -1) return [s.slice(start, i + 1), s.slice(i + 1)]; }
+      }
+      return null;
+    }
+    _emitJson(str) {
+      try { this.onMessage(JSON.parse(str)); }
+      catch (e) { console.warn('JSON parse error', e, str); }
+    }
+  }
+
+  // === INSTRUMENTS & NORMALISATION
+  const FUT_MAP = [
+    { re: /^(MES)/i, tickSize: 0.25, currencyPerTick: 1.25 },
+    { re: /^(ES)/i, tickSize: 0.25, currencyPerTick: 12.5 },
+    { re: /^(MNQ)/i, tickSize: 0.25, currencyPerTick: 0.50 },
+    { re: /^(NQ)/i, tickSize: 0.25, currencyPerTick: 5.00 },
+    { re: /^(MYM)/i, tickSize: 1, currencyPerTick: 0.50 },
+    { re: /^(YM)/i, tickSize: 1, currencyPerTick: 5.00 },
+    { re: /^(MCL)/i, tickSize: 0.01, currencyPerTick: 1.00 },
+    { re: /^(CL)/i, tickSize: 0.01, currencyPerTick: 10.0 },
+    { re: /^(MGC)/i, tickSize: 0.1, currencyPerTick: 1.00 },
+    { re: /^(GC)/i, tickSize: 0.1, currencyPerTick: 10.0 },
+  ];
+  function detectDivisor(raw, tickSize) {
+    const n = safeNumber(raw, 1);
+    if (!Number.isFinite(n)) return 1;
+    const isInt = Math.abs(n - Math.round(n)) < 1e-6;
+    if (isInt) {
+      if (tickSize === 0.01) return 100;
+      if (tickSize === 0.1) { if (Math.round(n) % 10 !== 0) return 10; }
+      if (tickSize === 0.25) {
+        const m = Math.abs(Math.round(n)) % 100;
+        if (m === 0 || m === 25 || m === 50 || m === 75) return 100;
+      }
+    }
+    if (n >= 1000000) return 100;
+    return 1;
+  }
+  function instrumentMeta(symbol, rawPrice) {
+    const s = safeString(symbol).toUpperCase();
+    const base = FUT_MAP.find(x => x.re.test(s)) || {tickSize: 0.25, currencyPerTick: 1.25};
+    const divisor = detectDivisor(rawPrice, base.tickSize);
+    return {...base, divisor};
+  }
+  function normalizePrice(symbol, rawPrice) {
+    const m = instrumentMeta(symbol, rawPrice);
+    return safeNumber(rawPrice) / (m.divisor || 1);
+  }
+  function priceToCurrency(symbol, priceDiff) {
+    const m = instrumentMeta(symbol);
+    return (priceDiff / m.tickSize) * m.currencyPerTick;
+  }
+
+  // === ÉTAT GLOBAL
+	// --- Filtre d'affichage (fenêtre sélectionnée par l'utilisateur)
+	let FILTER_FROM_MS = null;
+	let FILTER_TO_MS   = null;
+
+	// Contexte pour reconstruire les positions avant la période demandée
+	const CONTEXT_BACK_SEC = 48 * 3600; // 48h de marge (mets 24*3600 si tu préfères 24h)
+
+	// Helper: doit-on inclure un trade dans l'affichage/kpis ?
+	const shouldIncludeTrade = (closeMs) => {
+		if (FILTER_FROM_MS == null || FILTER_TO_MS == null) return true;
+		return closeMs >= FILTER_FROM_MS && closeMs <= FILTER_TO_MS;
+	};
+		
+  let accountPreference = '';
+  let accountPreferenceTimer = null;
+  const state = {
+    connected: false,
+    account: { tradeAccount: null, balance: null, availableFunds: null, dailyPL: null },
+    fills: [],
+    equitySeries: [],
+    wins: 0,
+    losses: 0,
+    realizedPL: 0,
+    symbolPL: new Map(),
+    perSymbolPos: new Map(),
+    initialBalance: null,
+    realizedEvents: [],
+    lastCashBalance: null,
+    lastCashBalanceAccount: null
+  };
+		// --- Capas DTC & positions ouvertes (snapshot "maintenant")
+	let usesMultiplePositions = false;              // depuis LOGON_RESPONSE
+	const openPositionsNow = new Map();             // key: symbol[|PositionIdentifier] -> { qty, avg, symbol, positionId }
+
+  const _fillsBuffer = [];
+  let client = null;
+  let manualDisconnect = false;
+  let reconnectTimer = null;
+  let reconnectAttempts = 0;
+  let kpiRefreshTimer = null;
+  const accounts = new Set();
+  let selectedAccount = localStorage.getItem('selectedAccount') || '';
+  let initialDataSent = false;
+  let currentHistoryReqId = null;
+  let isLoadingHistory = false;
+
+  // === FORMATAGE
+  function fmt(n, d = 2) {
+    if (n === null || n === undefined || Number.isNaN(n)) return '—';
+    return safeNumber(n).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmt2(x, d = 2) {
+    if (x === null || x === undefined || Number.isNaN(x)) return 'N/A';
+    if (!Number.isFinite(x)) return x > 0 ? '∞' : '-∞';
+    return safeNumber(x).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function parseDtcTime(v) {
+    const n = safeNumber(v, Date.now());
+    if (!Number.isFinite(n)) return Date.now();
+    if (n > 1e14) return n / 1000;
+    if (n > 1e12) return n;
+    if (n > 1e9) return n * 1000;
+    return n * 1000;
+  }
+
+  // === POLLING KPI
+  function startKpiPolling(account) {
+    if (kpiRefreshTimer) clearInterval(kpiRefreshTimer);
+    if (!account) return;
+    kpiRefreshTimer = setInterval(() => {
+      if (!client || !state.connected || !account) return;
+      client.send({Type: 601, RequestID: Date.now() % 1e6, TradeAccount: account});
+      client.send({Type: 305, RequestID: 21, TradeAccount: account});
+    }, 15000);
+  }
+  function stopKpiPolling() { if (kpiRefreshTimer) { clearInterval(kpiRefreshTimer); kpiRefreshTimer = null; } }
+
+  // === RECONNEXION
+  function scheduleReconnect() {
+    if (manualDisconnect || reconnectTimer) return;
+    const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
+    qs('#statusPill').textContent = `Reconnexion dans ${Math.round(delay / 1000)}s…`;
+    reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, delay);
+  }
+  const requestKpisNow = (() => {
+    let last = 0, timer = null;
+    const fire = () => {
+      if (!client || !state.connected || !selectedAccount) return;
+      client.send({Type: 601, RequestID: Date.now() % 1e6, TradeAccount: selectedAccount});
+      client.send({Type: 305, RequestID: 21, TradeAccount: selectedAccount});
+    };
+    return () => {
+      const now = Date.now();
+      if (now - last > 1200) { last = now; fire(); }
+      else { clearTimeout(timer); timer = setTimeout(() => { last = Date.now(); fire(); }, 1200); }
+    };
+  })();
+
+  // === POSITION & PNL INTERNE
+  function updatePositionAndRealized(symbol, rawPrice, qtyChange) {
+    if (!symbol || !Number.isFinite(rawPrice) || !Number.isFinite(qtyChange)) return 0;
+    const price = normalizePrice(symbol, rawPrice);
+    const positions = state.perSymbolPos;
+    if (!positions.has(symbol)) positions.set(symbol, {qty: 0, avg: 0});
+    const pos = positions.get(symbol);
+    if (pos.qty === 0 || Math.sign(pos.qty) === Math.sign(qtyChange)) {
+      const totalQty = Math.abs(pos.qty) + Math.abs(qtyChange);
+      pos.avg = (pos.avg * Math.abs(pos.qty) + price * Math.abs(qtyChange)) / totalQty;
+      pos.qty += qtyChange;
+      positions.set(symbol, pos);
+      return 0;
+    }
+    const closed = Math.min(Math.abs(pos.qty), Math.abs(qtyChange));
+    const realizedPoints = (price - pos.avg) * (-Math.sign(qtyChange)) * closed;
+    const realizedCurrency = priceToCurrency(symbol, realizedPoints);
+    const remaining = pos.qty + qtyChange;
+    if (Math.sign(remaining) === Math.sign(pos.qty)) {
+      const addQty = Math.abs(qtyChange) - closed;
+      if (addQty > 0) {
+        const totalQty = Math.abs(pos.qty) + addQty;
+        pos.avg = (pos.avg * Math.abs(pos.qty) + price * addQty) / totalQty;
+      }
+      pos.qty = remaining;
+    } else {
+      pos.qty = remaining;
+      pos.avg = pos.qty === 0 ? 0 : price;
+    }
+    positions.set(symbol, pos);
+    return realizedCurrency;
+  }
+  function resetTradesView() {
+    state.fills = [];
+    state.equitySeries = [];
+    state.wins = 0;
+    state.losses = 0;
+    state.realizedPL = 0;
+    state.symbolPL.clear();
+    state.perSymbolPos.clear();
+    state.realizedEvents = [];
+    state.initialBalance = null;
+    state.lastCashBalance = null;
+    state.lastCashBalanceAccount = null;
+    _fillsBuffer.length = 0;
+    _openLots.clear();
+    // Patch A: reset dédup & polling bases
+    seenFillKeys.clear();
+    lastProcessedFillMS = 0;
+    pendingLiveFills.length = 0;
+
+    qs('#kpiBalance').textContent = '—';
+    qs('#kpiAvailable').textContent = '—';
+    qs('#kpiDailyPL').textContent = '—';
+    const tb = qs('#tradesTable tbody'); if (tb) tb.innerHTML = '';
+    const em = qs('#emptyMsg'); if (em) em.style.display = 'block';
+    refreshCharts();
+    openPositionsNow.clear();
+    pruneCaches(); // remet les caches à plat juste après un reset
+  }
+
+  // === PALETTE & CHARTS
+  const PALETTE = ['#60a5fa','#34d399','#f97316','#a78bfa','#f472b6','#2dd4bf','#eab308','#f87171','#22d3ee','#4ade80','#fb7185','#c084fc'];
+  const getVar = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  const hashString = (s='') => { let h=0; for (let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return Math.abs(h); };
+  const colorForSymbol = (sym) => !sym ? '#94a3b8' : PALETTE[hashString(sym)%PALETTE.length];
+
+  if (window.Chart?.overrides?.doughnut) Chart.overrides.doughnut.cutout = '72%';
+  if (window.Chart?.defaults?.elements?.arc) {
+    Chart.defaults.elements.arc.borderWidth = 2;
+    Chart.defaults.elements.arc.borderColor = 'rgba(255,255,255,0.9)';
+  }
+
+  const pie1 = new Chart(qs('#pieWinLoss'), {
+    type: 'doughnut',
+    data: { labels: ['Gagnants','Perdants'], datasets: [{ data: [0,0], backgroundColor: [getVar('--green')||'#22c55e', getVar('--red')||'#ef4444'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Trades Gagnants/Perdants' } } }
+  });
+
+  const pie2 = new Chart(qs('#pieBySymbol'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'PnL par Symbole' } } }
+  });
+
+	// === X axis — Adaptive labels (Jour / Semaine / Mois)
+	function _getTs(td, i){
+	  if (!td || !td.length) return null;
+	  const idx = Math.max(0, Math.min(td.length - 1, i|0));
+	  return td[idx]?.timestamp ?? null;
+	}
+	function _spanDays(scale, td){
+	  if (!td || !td.length) return 0;
+	  const minI = Math.max(0, Math.floor(scale.min ?? 0));
+	  const maxI = Math.min(td.length - 1, Math.ceil(scale.max ?? (td.length - 1)));
+	  const s = _getTs(td, minI), e = _getTs(td, maxI);
+	  return (s && e) ? (e - s) / 86400000 : 0;
+	}
+	function _modeForSpan(days){
+	  if (days <= 7) return 'day';
+	  if (days <= 60) return 'week';
+	  return 'month';
+	}
+	function _isNewDay(i, td){
+	  if (i <= 0) return true;
+	  const a = new Date(_getTs(td, i)), b = new Date(_getTs(td, i - 1));
+	  return a.getFullYear() !== b.getFullYear() || a.getMonth() !== b.getMonth() || a.getDate() !== b.getDate();
+	}
+	function _isMonday(i, td){
+	  const d = new Date(_getTs(td, i));
+	  return d.getDay() === 1; // 1 = lundi
+	}
+	function _isMonthStart(i, td){
+	  const d = new Date(_getTs(td, i));
+	  return d.getDate() === 1;
+	}
+	function _fmtJJMM(ts){
+	  const d = new Date(ts);
+	  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+	}
+	function _fmtMMM(ts){
+	  const d = new Date(ts);
+	  // ex: "août", "sep". (court, sans année)
+	  return d.toLocaleDateString('fr-FR', { month: 'short' });
+	}
+	function _shouldShowTick(i, mode, td){
+	  if (!td || !td.length) return false;
+	  if (i === 0) return true;
+	  if (mode === 'day')   return _isNewDay(i, td);
+	  if (mode === 'week')  return _isMonday(i, td);
+	  /* month */           return _isMonthStart(i, td);
+	}
+	function _majorTick(i, mode, td){
+	  // Même logique que l’affichage du label
+	  return _shouldShowTick(i, mode, td);
+	}
+
+  const equityOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'nearest', axis: 'x' },
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: 'Courbe d\'Equity - Survolez les points pour voir les détails des trades' },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#e5e7eb',
+        bodyColor: '#e5e7eb',
+        borderColor: '#4f46e5',
+        borderWidth: 2,
+        cornerRadius: 8,
+        displayColors: true,
+        padding: 12,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        callbacks: {
+          title: function(context) {
+            const dataIndex = context[0].dataIndex;
+            const tradeData = context[0].dataset.tradeData?.[dataIndex];
+            if (tradeData && tradeData.symbol !== 'N/A') {
+              const date = new Date(tradeData.closeTime || tradeData.timestamp).toLocaleDateString('fr-FR');
+              const time = new Date(tradeData.closeTime || tradeData.timestamp).toLocaleTimeString('fr-FR');
+              return [`Trade ${dataIndex + 1} - ${tradeData.symbol}`, `${date} à ${time}`];
+            }
+            const date = new Date(context[0].parsed.x).toLocaleDateString('fr-FR');
+            return [`Point ${dataIndex + 1}`, date];
+          },
+          label: function(context) {
+            const dataIndex = context.dataIndex;
+            const tradeData = context.dataset.tradeData?.[dataIndex];
+            const lines = [`💰 Equity: ${fmt(context.parsed.y, 2)}`];
+            if (tradeData && tradeData.symbol !== 'N/A') {
+              lines.push(
+                `${tradeData.pnl >= 0 ? '📈' : '📉'} PnL: ${fmt(tradeData.pnl, 2)}`,
+                `${tradeData.side === 1 ? '🟢' : tradeData.side === -1 ? '🔴' : '⚪'} ${sideLabelFrom(tradeData.side)} ${tradeData.qty}`,
+                `📊 Entrée: ${fmt(tradeData.entry, 2)}`,
+                `📊 Sortie: ${fmt(tradeData.exit, 2)}`,
+                `⏱️ Durée: ${tradeData.duration}`
+              );
+            } else {
+              lines.push('ℹ️ Point sans trade associé');
+            }
+            return lines;
+          },
+          labelColor: function(context) {
+            const dataIndex = context.dataIndex;
+            const tradeData = context.dataset.tradeData?.[dataIndex];
+            if (tradeData && tradeData.pnl !== undefined && tradeData.symbol !== 'N/A') {
+              return { borderColor: tradeData.pnl >= 0 ? '#22c55e' : '#ef4444', backgroundColor: tradeData.pnl >= 0 ? '#22c55e' : '#ef4444' };
+            }
+            return { borderColor: '#4f46e5', backgroundColor: '#4f46e5' };
+          }
+        }
+      }
+    },
+	scales: {
+	  x: {
+		type: 'time',            // 'time' ou 'timeseries' ; 'time' est le plus permissif
+		time: {
+		  minUnit: 'day',
+		  tooltipFormat: 'dd/MM/yyyy HH:mm',
+		  displayFormats: {
+			day:   'dd/MM',
+			week:  'dd/MM',
+			month: 'MM/yyyy'
+		  }
+		},
+		ticks: {
+		  autoSkip: true,
+		  maxTicksLimit: 8
+		},
+		grid: { color: 'rgba(255,255,255,0.1)' }
+	  },
+	  y: {                       // ← ton Y actuel, inchangé
+		display: true,
+		title: { display: true, text: 'PnL Cumulé' },
+		grid: { color: 'rgba(255,255,255,0.1)' }
+	  }
+	}
+  };
+
+  // Applique la config zoom seulement si le plugin est présent
+  if (ensureZoomStatus()) {
+    equityOptions.plugins.zoom = {
+      pan: { enabled: true, mode: 'xy', modifierKey: 'shift', threshold: 10 },
+      zoom: { wheel: { enabled: true, speed: 0.1 }, pinch: { enabled: true }, drag: { enabled: false }, mode: 'xy' }
+    };
+  }
+
+  const equity = new Chart(qs('#equityCurve'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Equity',
+        data: [],
+        fill: true,
+        tension: 0.25,
+        borderWidth: 2,
+        borderColor: '#4f46e5',
+        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+        pointBackgroundColor: [],
+        pointBorderColor: [],
+        pointRadius: 3,
+        pointHoverRadius: 8,
+        pointBorderWidth: 1,
+        pointHoverBorderWidth: 2,
+        segment: {
+          borderColor: (ctx) => {
+            const y0 = ctx.p0.parsed.y;
+            const y1 = ctx.p1.parsed.y;
+            return (y0 < 0 || y1 < 0) ? 'rgba(239,68,68,0.95)' : 'rgba(79,70,229,0.95)';
+          }
+        },
+        tradeData: []
+      }]
+    },
+    options: equityOptions
+  });
+
+  // Reconfigurer le graphique quand le plugin devient dispo
+  window.reconfigureEquityChart = function() {
+    if (!equity || !ensureZoomStatus()) return;
+    equity.options.plugins = equity.options.plugins || {};
+    equity.options.plugins.zoom = {
+      pan: { enabled: true, mode: 'xy', modifierKey: 'shift', threshold: 10 },
+      zoom: { wheel: { enabled: true, speed: 0.1 }, pinch: { enabled: true }, drag: { enabled: false }, mode: 'xy' }
+    };
+    equity.update();
+    showStatusMessage('Plugin zoom activé ! SHIFT+clic-glisser pour déplacer', 'success', 4000);
+    const instructions = qs('#panInstructions');
+    if (instructions) {
+      instructions.innerHTML = '<strong>SHIFT + clic-maintenir-glisser</strong> pour déplacer';
+    }
+  };
+
+  const capProfit = new Chart(qs('#pieCapitalProfit'), {
+    type: 'doughnut',
+    data: { labels: ['Capital', 'Profit'], datasets: [{ data: [0,0], backgroundColor: [getVar('--slate')||'#475569', getVar('--green')||'#22c55e'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Capital vs Profit' } } }
+  });
+
+// --- Fix donuts: garder un cercle parfait
+[pie1, pie2, capProfit].forEach(c => {
+  c.options.maintainAspectRatio = true;
+  c.options.aspectRatio = 1;
+  c.resize(); // recalcul immédiat
+});
+	// === Titres uniformes pour les widgets (hors courbe & liste trades) ===
+	(function addWidgetTitles(){
+	  const TITRES = {
+		'w-pie-winloss':     'Trades Gagnants / Perdants',
+		'w-pie-bysymbol':    'PnL par Symbole',
+		'w-capital-profit':  'Capital vs Profit',
+		'w-adv-stats':       'Statistiques Avancées',
+		// 'w-eco-cal':      'Calendrier économique', // décommente si tu veux un header fixe au calendrier
+	  };
+
+	  const addHeader = (widgetId, title) => {
+		const w = document.querySelector(`[data-widget-id="${widgetId}"]`);
+		if (!w || w.querySelector('.widget-header')) return; // déjà présent
+		const header = document.createElement('div');
+		header.className = 'widget-header';
+		header.innerHTML = `<div class="widget-title">${title}</div>`;
+
+		const handle = w.querySelector('.drag-handle');
+		if (handle) handle.insertAdjacentElement('afterend', header);
+		else w.prepend(header);
+	  };
+
+	  Object.entries(TITRES).forEach(([id, title]) => addHeader(id, title));
+
+	  // Cache les titres internes Chart.js pour éviter la redite
+	  [pie1, pie2, capProfit].forEach(c => {
+		try { if (c?.options?.plugins?.title) c.options.plugins.title.display = false; c.update?.('none'); } catch {}
+	  });
+	})();
+
+	// Préfixe d'icônes aux titres existants
+	(function addTitleIcons(){
+	  const ICONS = {
+		'w-pie-winloss':    '⚖️',
+		'w-pie-bysymbol':   '💲/🌐',
+		'w-capital-profit': '💰',
+		'w-adv-stats':      '📊',
+		'w-eco-cal':        '📅' // seulement si tu affiches un header pour le calendrier
+	  };
+	  Object.entries(ICONS).forEach(([id, icon]) => {
+		const el = document.querySelector(`[data-widget-id="${id}"] .widget-title`);
+		if (el && !el.textContent.trim().startsWith(icon)) {
+		  el.textContent = `${icon} ${el.textContent.trim()}`;
+		}
+	  });
+	})();
+
+	// Désactive les titres intégrés Chart.js (pour éviter la redite)
+	[pie1, pie2, capProfit].forEach(c => {
+	  if (c?.options?.plugins?.title) c.options.plugins.title.display = false;
+	  c?.update?.('none');
+	});
+
+  // === STATISTIQUES AVANCÉES
+  function stddev(arr) { if (!arr || arr.length < 2) return NaN; const m = arr.reduce((a,b)=>a+b,0)/arr.length; const v = arr.reduce((a,b)=>a+(b-m)*(b-m),0)/(arr.length-1); return Math.sqrt(v); }
+  function maxDrawdown(series) { if (!series || series.length===0) return 0; let peak=series[0].equity, maxDD=0; for (const p of series){ peak=Math.max(peak,p.equity); maxDD=Math.max(maxDD, peak-p.equity);} return maxDD; }
+  function streaks(arr){ let wc=0,lc=0,wmax=0,lmax=0; for (const v of arr){ if(v>0){wc++;lc=0;wmax=Math.max(wmax,wc);} else if(v<0){lc++;wc=0;lmax=Math.max(lmax,lc);} else {wc=0;lc=0;} } return {wmax,lmax}; }
+  function computeAdvancedStats() {
+    const trades = state.realizedEvents.map(e => e.pnl);
+    const n = trades.length;
+    const total = state.realizedPL;
+    const wins = trades.filter(v => v > 0);
+    const losses = trades.filter(v => v < 0);
+    const nW = wins.length, nL = losses.length;
+    const avg = n ? total / n : NaN;
+    const sumW = wins.reduce((a,b)=>a+b,0);
+    const sumLAbs = Math.abs(losses.reduce((a,b)=>a+b,0) || 0);
+    const avgW = nW ? sumW / nW : NaN;
+    const avgL = nL ? (losses.reduce((a,b)=>a+b,0) / nL) : NaN;
+    const pf = sumLAbs > 0 ? (sumW / sumLAbs) : (sumW > 0 ? Infinity : 0);
+    const gl = (avgW > 0 && avgL < 0) ? (avgW / Math.abs(avgL)) : (avgW > 0 && !nL ? Infinity : (!nW && avgL < 0 ? 0 : NaN));
+    const wr = n ? (nW / n * 100) : NaN;
+    const sd = stddev(trades);
+    const sdDown = stddev(losses);
+    const exp = n ? (wr / 100) * (isNaN(avgW) ? 0 : avgW) + ((1 - wr / 100) * (isNaN(avgL) ? 0 : avgL)) : NaN;
+    const dd = maxDrawdown(state.equitySeries);
+    const rec = dd > 0 ? (total / dd) : NaN;
+    const sh = (sd > 0) ? (avg / sd) : NaN;
+    const so = (sdDown > 0) ? (avg / sdDown) : NaN;
+    const {wmax, lmax} = streaks(trades);
+    let cagr = NaN;
+    if (state.initialBalance > 0 && state.equitySeries.length > 1) {
+      const startT = state.equitySeries[0].t;
+      const endT = state.equitySeries[state.equitySeries.length - 1].t;
+      const days = (endT - startT) / (24 * 3600 * 1000);
+      if (days >= 90) {
+        const years = days / 365;
+        const finalEq = state.initialBalance + total;
+        const ratio = finalEq / state.initialBalance;
+        if (ratio > 0 && years > 0) cagr = Math.pow(ratio, 1 / years) - 1;
+      }
+    }
+    return { total, n, nW, nL, wr, avg, avgW, avgL, gl, pf, rec, exp, sd, dd, sh, so, wmax, lmax, cagr };
+  }
+  function updateCapitalDonut() {
+    const base = Math.max(0, state.initialBalance ?? 0);
+    const pnl = state.realizedPL;
+    const ds = capProfit.data.datasets[0];
+    if (pnl >= 0) {
+      capProfit.data.labels = ['Capital','Profit'];
+      ds.data = [base, pnl];
+      ds.backgroundColor = [getVar('--slate')||'#475569', getVar('--green')||'#22c55e'];
+    } else {
+      capProfit.data.labels = ['Capital','Loss'];
+      ds.data = [base, Math.abs(pnl)];
+      ds.backgroundColor = [getVar('--slate')||'#475569', getVar('--red')||'#ef4444'];
+    }
+    capProfit.update('none');
+  }
+  function updateAdvancedPanel() {
+    const s = computeAdvancedStats();
+    qs('#advStatsList').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><strong>Total Profit :</strong> ${fmt2(s.total)}</div>
+        <div><strong>Recovery Factor :</strong> ${fmt2(s.rec, 2)}</div>
+        <div><strong>Total Trades :</strong> ${fmt2(s.n, 0)}</div>
+        <div><strong>Expectancy :</strong> ${fmt2(s.exp, 2)}</div>
+        <div><strong>Winning Trades :</strong> ${fmt2(s.nW, 0)}</div>
+        <div><strong>Volatilité (Std Dev) :</strong> ${fmt2(s.sd, 2)}</div>
+        <div><strong>Losing Trades :</strong> ${fmt2(s.nL, 0)}</div>
+        <div><strong>Maximum Drawdown :</strong> ${fmt2(s.dd, 2)}</div>
+        <div><strong>Win Rate (%) :</strong> ${fmt2(s.wr, 2)}</div>
+        <div><strong>Max Winning Streak :</strong> ${fmt2(s.wmax, 0)}</div>
+        <div><strong>Average Profit :</strong> ${fmt2(s.avg, 2)}</div>
+        <div><strong>Max Losing Streak :</strong> ${fmt2(s.lmax, 0)}</div>
+        <div><strong>Average Winning Profit :</strong> ${fmt2(s.avgW, 2)}</div>
+        <div><strong>Sharpe Ratio :</strong> ${fmt2(s.sh, 2)}</div>
+        <div><strong>Average Losing Profit :</strong> ${fmt2(s.avgL, 2)}</div>
+        <div><strong>Sortino Ratio :</strong> ${fmt2(s.so, 2)}</div>
+        <div><strong>Gain/Loss Ratio :</strong> ${fmt2(s.gl, 2)}</div>
+        <div><strong>Profit Factor :</strong> ${fmt2(s.pf, 2)}</div>
+        <div><strong>CAGR :</strong> ${Number.isNaN(s.cagr) ? 'N/A' : (fmt2(100 * s.cagr, 2) + ' %')}</div>
+      </div>`;
+  }
+  function recomputeKpisForSim() {
+    if (!isSimAccountName(selectedAccount)) return;
+    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+    const daily = state.realizedEvents.filter(e => e.t >= day0.getTime()).reduce((a, e) => a + (e.pnl || 0), 0);
+    const lastCashForThis = (state.lastCashBalanceAccount === selectedAccount) ? state.lastCashBalance : null;
+    const base = (Number.isFinite(lastCashForThis) && lastCashForThis !== 0)
+      ? lastCashForThis
+      : (Math.max(0, state.initialBalance ?? 0) + state.realizedPL);
+    qs('#kpiBalance').textContent = fmt(base, 2);
+    qs('#kpiAvailable').textContent = fmt(base, 2);
+    qs('#kpiDailyPL').textContent = fmt(daily, 2);
+  }
+  function refreshCharts() {
+    pie1.data.datasets[0].data = [state.wins, state.losses];
+    pie1.update('none');
+    const entries = [...state.symbolPL.entries()].sort((a,b)=>Math.abs(b[1]) - Math.abs(a[1])).slice(0,6);
+    pie2.data.labels = entries.map(e=>e[0]);
+    pie2.data.datasets[0].data = entries.map(e=>Math.abs(e[1]));
+    pie2.data.datasets[0].backgroundColor = entries.map(e=>colorForSymbol(e[0]));
+    pie2.update('none');
+	//equity.data.labels = []; // plus utilisé
+	equity.data.datasets[0].data = state.equitySeries.map(e => ({
+	  x: e.t,                                  // timestamp en ms
+	  y: Number(e.equity.toFixed(2))
+	}));
+    const tradeDataArray = [], pointBackgroundColors = [], pointBorderColors = [];
+    for (let i = 0; i < state.equitySeries.length; i++) {
+      const equityPoint = state.equitySeries[i];
+      const tradeEvent = state.realizedEvents[i];
+      if (tradeEvent && tradeEvent.symbol) {
+        let duration = 'N/A';
+        if (tradeEvent.openTime && tradeEvent.closeTime) {
+          const diffMs = tradeEvent.closeTime - tradeEvent.openTime;
+          const diffMinutes = Math.round(diffMs / (1000 * 60));
+          if (diffMinutes < 1) duration = '< 1min';
+          else if (diffMinutes < 60) duration = `${diffMinutes}min`;
+          else if (diffMinutes < 1440) { const hours = Math.floor(diffMinutes/60); const minutes = diffMinutes % 60; duration = minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`; }
+          else { const days = Math.floor(diffMinutes/1440); const hours = Math.floor((diffMinutes % 1440)/60); duration = hours > 0 ? `${days}j ${hours}h` : `${days}j`; }
+        }
+        tradeDataArray.push({ symbol: tradeEvent.symbol, pnl: tradeEvent.pnl||0, side: tradeEvent.side||0, qty: tradeEvent.qty||'N/A', entry: tradeEvent.entry||0, exit: tradeEvent.exit||0, duration, timestamp: equityPoint.t, openTime: tradeEvent.openTime, closeTime: tradeEvent.closeTime });
+        if (tradeEvent.pnl >= 0) { pointBackgroundColors.push('#22c55e'); pointBorderColors.push('#16a34a'); }
+        else { pointBackgroundColors.push('#ef4444'); pointBorderColors.push('#dc2626'); }
+      } else {
+        tradeDataArray.push({ symbol:'N/A', pnl:0, side:0, qty:'N/A', entry:0, exit:0, duration:'N/A', timestamp: equityPoint.t });
+        pointBackgroundColors.push('#4f46e5'); pointBorderColors.push('#3730a3');
+      }
+    }
+    equity.data.datasets[0].tradeData = tradeDataArray;
+    equity.data.datasets[0].pointBackgroundColor = pointBackgroundColors;
+    equity.data.datasets[0].pointBorderColor = pointBorderColors;
+    equity.update('none');
+    updateCapitalDonut();
+    updateAdvancedPanel();
+  }
+
+	// === LIVE FILLS SYNC / DÉDUP (Patch A & D — corrigé) ===
+	let lastProcessedFillMS = 0;        // ms du dernier fill effectivement traité
+	const seenFillKeys = new Set();     // clés uniques déjà vues (exactes ou approchées)
+	const pendingLiveFills = [];        // 301 tamponnés pendant l'historique
+	let fillsPollTimer = null;          // timer polling 303
+
+	// Fenêtres plus strictes pour éviter les doublons
+	const LOOKBACK_MS = 2000;           // marge 2s pour le rattrapage
+	const DEDUP_BUCKET_SEC = 2;         // bucket de dédup de 2 secondes
+	const SAFETY_LAG_MS = 250; // évite de rebalayer pile le dernier fill traité
+
+	// --- Watchdog des requêtes 303→304 (history & poll)
+	const WATCHDOG_MS = 8000; // 8s : ajuste si besoin
+	const inFlight = { type: null, reqId: null, startedAt: 0, timeout: null };
+
+	function clearWatchdog() {
+		if (inFlight.timeout) clearTimeout(inFlight.timeout);
+		inFlight.type = null; inFlight.reqId = null; inFlight.startedAt = 0; inFlight.timeout = null;
+	}
+
+	function startWatchdog(type, reqId) {
+		clearWatchdog();
+		inFlight.type = type;
+		inFlight.reqId = reqId;
+		inFlight.startedAt = Date.now();
+		inFlight.timeout = setTimeout(() => {
+			console.warn(`[Refresh][${type}] timeout ${WATCHDOG_MS}ms — on libère la file`);
+			// Libère la pipeline pour permettre le prochain poll
+			currentHistoryReqId = null;
+			isLoadingHistory = false;
+			// Feedback LED : rouge pulse court puis done
+			setRefreshIndicator('error');
+			setTimeout(() => setRefreshIndicator('done'), 700);
+		}, WATCHDOG_MS);
+	}
+
+	// === PRUNE (mémoire) — à coller juste après LOOKBACK_MS / DEDUP_BUCKET_SEC ===
+	const PRUNE = {
+	  DEDUP_SEC: 30 * 60,     // garde ~30 minutes de buckets de dédup
+	  DEDUP_MAX: 20000,       // borne dure au cas où (sécurité)
+	  EQUITY_MAX: 5000        // max de points conservés pour la courbe d'equity
+	};
+
+	function pruneCaches() {
+	  const nowSec = Math.floor(Date.now() / 1000);
+
+	  // 1) seenFillKeys : on conserve les clés "récentes"
+	  if (typeof seenFillKeys !== 'undefined' && seenFillKeys && seenFillKeys.size) {
+		const keep = new Set();
+
+		// ⚠️ NOUVEAU : on protège aussi le bucket du dernier fill traité
+		const protectBucket = lastProcessedFillMS ? bucketTs(lastProcessedFillMS) : -1;
+
+		seenFillKeys.forEach(k => {
+		  // approxFillKey se termine par |s<bucket>
+		  const m = /s(\d+)$/.exec(k);
+
+		  if (!m) {
+			// clé "exacte" (ex: X|<execId>) — on garde
+			keep.add(k);
+			return;
+		  }
+
+		  const bucket = Number(m[1]);
+		  // On garde si récent OU si c'est le bucket du dernier fill
+		  if ((nowSec - bucket) <= PRUNE.DEDUP_SEC || bucket === protectBucket) {
+			keep.add(k);
+		  }
+		});
+
+		if (keep.size !== seenFillKeys.size) {
+		  seenFillKeys.clear();
+		  keep.forEach(k => seenFillKeys.add(k));
+		}
+
+		// Borne dure si on dépasse
+		if (seenFillKeys.size > PRUNE.DEDUP_MAX) {
+		  const excess = seenFillKeys.size - PRUNE.DEDUP_MAX;
+		  let i = 0;
+		  for (const k of seenFillKeys) {
+			if (i++ >= excess) break;
+			seenFillKeys.delete(k);
+		  }
+		}
+	  }
+
+	  // 2) Séries equity / événements réalisés : limite glissante
+	  if (Array.isArray(state?.equitySeries) && state.equitySeries.length > PRUNE.EQUITY_MAX) {
+		const cut = state.equitySeries.length - PRUNE.EQUITY_MAX;
+		state.equitySeries.splice(0, cut);
+		if (Array.isArray(state.realizedEvents) && state.realizedEvents.length > cut) {
+		  state.realizedEvents.splice(0, cut);
+		}
+	  }
+	}
+
+
+	// Lance un prune régulier toutes les 60 s
+	setInterval(pruneCaches, 60 * 1000);
+
+
+	const bucketTs = (ts) =>
+		Math.floor(ts / (1000 * DEDUP_BUCKET_SEC)) * DEDUP_BUCKET_SEC;
+
+	// Clé “approximative” robuste (couvre 301 vs 304)
+	// - symbole + side + qty
+	// - prix normalisé arrondi au tick
+	// - timestamp regroupé par bucket (2s)
+	function approxFillKey(symbol, side, qty, rawPrice, ts) {
+		const meta = instrumentMeta(symbol, rawPrice);
+		const pN = normalizePrice(symbol, rawPrice);
+		const tick = meta.tickSize || 0.25;
+		const ticksRounded = Math.round(pN / tick);
+		const secBucket = bucketTs(ts);
+		return `${symbol}|${side}|${qty}|t${ticksRounded}|s${secBucket}`;
+	}
+
+	// Traite un "fill" (live 301 ou historique 304) avec dédup tolérante
+	// exactKey permet d'utiliser un ID d'exécution serveur si disponible (idéal)
+	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null) {
+		if (!symbol || !side || !qty || !Number.isFinite(price) || !Number.isFinite(ts)) return;
+
+		const key = exactKey || approxFillKey(symbol, side, qty, price, ts);
+		if (seenFillKeys.has(key)) return; // déjà vu (exact ou approx)
+		seenFillKeys.add(key);
+
+		// On garde aussi une “seconde chance” avec une clé approx systématique,
+		// utile si on a eu une exactKey une fois et pas la fois suivante.
+		seenFillKeys.add(approxFillKey(symbol, side, qty, price, ts));
+
+		lastProcessedFillMS = Math.max(lastProcessedFillMS, ts);
+
+		// Met à jour position interne + agrégation FIFO → trades réalisés
+		updatePositionAndRealized(symbol, price, side * qty);
+
+		// Si le fill est une fermeture d'un swing antérieur non vu dans l'historique chargé,
+		// injecte un "lot hérité" au début de la fenêtre pour permettre une agrégation correcte.
+		try { ensureSeedForClose(symbol, side, qty); } catch (e) { /* silencieux */ }
+
+		let trades = aggregateFromFill(symbol, side, qty, price, ts);
+		if (Number.isFinite(commission) && commission !== 0 && trades.length) {
+			const totQty = trades.reduce((a, t) => a + t.qty, 0) || 1;
+			trades = trades.map(t => ({ ...t, pnl: t.pnl - commission * (t.qty / totQty) }));
+		}
+
+		for (const t of trades) {
+			const inRange = shouldIncludeTrade(t.closeTime);
+
+			if (inRange) {
+				state.realizedPL += t.pnl;
+
+				if (!state.symbolPL.has(t.symbol)) state.symbolPL.set(t.symbol, 0);
+				state.symbolPL.set(t.symbol, state.symbolPL.get(t.symbol) + t.pnl);
+
+				if (t.pnl > 0) state.wins++; else if (t.pnl < 0) state.losses++;
+
+				state.equitySeries.push({ t: t.closeTime, equity: state.realizedPL });
+				state.realizedEvents.push({
+					pnl: t.pnl, t: t.closeTime, symbol: t.symbol, side: t.side, qty: t.qty,
+					entry: t.entry, exit: t.exit, openTime: t.openTime, closeTime: t.closeTime
+				});
+
+				addTradeRowTrade(t);
+			}
+		}
+
+		if (trades.length) {
+			const em = document.getElementById('emptyMsg'); if (em) em.style.display = 'none';
+			refreshCharts();
+			recomputeKpisForSim();
+			requestKpisNow();
+		}
+	}
+
+  // Filet de sécurité : re-demande des fills récents via 303 → 304
+	function requestRecentFills() {
+		if (!client || !state.connected || !selectedAccount) return;
+		if (isLoadingHistory || currentHistoryReqId !== null) return; // évite chevauchement
+
+		const endSec = Math.floor(Date.now() / 1000);
+
+		// 👉 IMPORTANT : on repart LÉGÈREMENT AVANT le dernier fill traité,
+		// pas après. La dédup’ gère les doublons.
+		const startMs = lastProcessedFillMS
+			? Math.max(0, lastProcessedFillMS - SAFETY_LAG_MS)   // ← avant au lieu de après
+			: (Date.now() - 15 * 60 * 1000);
+		const startSec = Math.max(0, Math.floor(startMs / 1000));
+
+		// Rien à demander ? Blink visuel pour montrer un cycle de refresh
+		if (startSec >= endSec) {
+			setRefreshIndicator('active');
+			setTimeout(() => setRefreshIndicator('done'), 150);
+			return;
+		}
+
+		const reqId = Math.floor(Math.random() * 1e6);
+		currentHistoryReqId = reqId;            // on continue d’utiliser la pipeline existante
+		setRefreshIndicator('active');
+		startWatchdog('poll', reqId);
+
+		client.send({
+			Type: 303,
+			RequestID: reqId,
+			TradeAccount: selectedAccount,
+			StartDateTime: startSec,
+			EndDateTime: endSec
+		});
+		// NOTE : on NE met PAS isLoadingHistory=true ici pour laisser passer les 301 live.
+	}
+
+	function startFillsPolling() {
+		if (fillsPollTimer) clearInterval(fillsPollTimer);
+		// 1er tick aléatoire entre 0.5s et 2s, ensuite toutes les 10s
+		const first = Math.random() * 1500 + 500;
+		setTimeout(() => {
+			requestRecentFills();
+			fillsPollTimer = setInterval(requestRecentFills, 10000);
+		}, first);
+	}
+
+  function stopFillsPolling() {
+    if (fillsPollTimer) { clearInterval(fillsPollTimer); fillsPollTimer = null; }
+  }
+
+  // === AGRÉGATEUR FIFO Open→Close
+  const _openLots = new Map();
+  const getLots = (sym) => { if (!_openLots.has(sym)) _openLots.set(sym, []); return _openLots.get(sym); };
+  function aggregateFromFill(symbol, side, qty, rawPrice, timeMs) {
+    const trades = [];
+    if (!symbol || !side || !qty || !Number.isFinite(rawPrice)) return trades;
+    const priceN = normalizePrice(symbol, rawPrice);
+    const lots = getLots(symbol);
+    let remaining = qty;
+
+    while (remaining > 0 && lots.length && lots[0].side !== side) {
+      const lot = lots[0];
+      const closed = Math.min(remaining, lot.qty);
+      const pnlPoints = (priceN - lot.priceN) * lot.side * closed;
+      const pnlCur = priceToCurrency(symbol, pnlPoints);
+      trades.push({
+        symbol, side: lot.side, qty: closed,
+        openTime: lot.time, closeTime: timeMs,
+        entry: lot.priceN, exit: priceN, pnl: pnlCur
+      });
+      lot.qty -= closed;
+      remaining -= closed;
+      if (lot.qty <= 0) lots.shift();
+    }
+    if (remaining > 0) lots.push({ side, qty: remaining, priceN, time: timeMs });
+    return trades;
+  }
+  function addTradeRowTrade(tr) {
+    const trEl = document.createElement('tr');
+    const day = new Date(tr.openTime).toLocaleDateString('fr-FR');
+    const row = [
+      day,
+      new Date(tr.openTime).toLocaleString('fr-FR'),
+      new Date(tr.closeTime).toLocaleString('fr-FR'),
+      tr.symbol||'—',
+      sideLabelFrom(tr.side),
+      String(tr.qty),
+      fmt(tr.entry,2),
+      fmt(tr.exit,2),
+      fmt(tr.pnl,2)
+    ];
+    for (const txt of row) { const td = document.createElement('td'); td.textContent = txt; trEl.appendChild(td); }
+    const pnlCell = trEl.lastElementChild;
+    if (tr.pnl > 0) pnlCell.style.color = getVar('--green') || '#22c55e';
+    else if (tr.pnl < 0) pnlCell.style.color = getVar('--red') || '#ef4444';
+    qs('#tradesTable tbody').prepend(trEl);
+  }
+	// --- Helpers Positions → par symbole (somme nette + moyenne pondérée)
+	function getOpenPosForSymbol(symbol) {
+		if (!symbol) return null;
+		let net = 0, wSum = 0, qSum = 0;
+		for (const [k, p] of openPositionsNow) {
+			const s = k.split('|')[0];
+			if (s === symbol) {
+				net += p.qty;
+				const w = Math.abs(p.qty);
+				if (w > 0) { wSum += p.avg * w; qSum += w; }
+			}
+		}
+		if (net === 0) return null;
+		return { qty: net, avg: (qSum > 0 ? wSum / qSum : 0) };
+	}
+
+	// --- Somme de quantité dispo dans les lots "opposés" (pour closer)
+	function oppositeQtyAvailable(lots, incomingSide) {
+		let sum = 0;
+		for (const l of lots) { if (l.side !== incomingSide) sum += l.qty; }
+		return sum;
+	}
+
+	// --- Ensemence un "lot hérité" au tout début de la fenêtre si nécessaire
+	// NOTE : "seed hérité" = lot synthétique daté juste avant FILTER_FROM_MS,
+	// créé UNIQUEMENT quand un fill in-range tente de fermer une position
+	// ouverte avant la fenêtre (swing multi-jours/mois) que l'historique chargé
+	// ne permet pas de reconstruire. On s'appuie sur 305/306 (snapshot courant).
+	//
+	// Sécurité : on NE sème pas si le snapshot est vide ou si le fill n'est
+	// pas en fermeture (ex: SELL alors que position nette ≤ 0).
+		
+	function ensureSeedForClose(symbol, incomingSide, incomingQty) {
+		if (!symbol || !incomingSide || !incomingQty) return;
+		if (FILTER_FROM_MS == null) return;
+
+		const lots = getLots(symbol);
+
+		// Assez d'opposé déjà présent ? (ouverture vue dans le contexte) → rien à faire
+		const needed = Math.max(0, incomingQty - oppositeQtyAvailable(lots, incomingSide));
+		if (needed <= 0) return;
+
+		// Snapshot courant des positions : sert d'indice pour savoir s'il s'agit d'une fermeture
+		const pos = getOpenPosForSymbol(symbol);
+		if (!pos) return; // pas d'info exploitable → on ne sème pas (évite faux positifs)
+
+		// Si le signe de la position est opposé au side du fill => c'est une FERMETURE
+		// (ex: position long >0, fill SELL => incomingSide=-1 → pos.qty * incomingSide < 0)
+		if (pos.qty * incomingSide < 0) {
+			// Sème juste ce qu'il faut pour permettre la fermeture
+			lots.unshift({
+				side: -incomingSide,
+				qty: needed,
+				priceN: pos.avg,                // moyen courant (meilleure approximation dispo sans remonter +)
+				time: FILTER_FROM_MS - 1,       // horodatage juste avant la fenêtre
+				inherited: true
+			});
+		}
+	}
+
+  // === SÉLECTION COMPTE
+  function pickAccount(acc) {
+    selectedAccount = acc;
+    localStorage.setItem('selectedAccount', selectedAccount);
+    const sel = qs('#accountSelect'); if (sel) sel.value = selectedAccount;
+    if (!initialDataSent) requestInitialData(selectedAccount);
+  }
+  function fallbackSelectAccount() {
+    if (selectedAccount) return;
+    const ls = localStorage.getItem('selectedAccount');
+    const lsMatch = [...accounts].find(a => a === ls);
+    if (lsMatch) return pickAccount(lsMatch);
+    if (accounts.size === 1 && !accountPreference) return pickAccount([...accounts][0]);
+  }
+  function trySelectPreferredAccount() {
+    if (selectedAccount) return;
+    const typed = (accountPreference || '').trim();
+    if (typed) {
+      const match = [...accounts].find(a => a.toLowerCase() === typed.toLowerCase());
+      if (match) { pickAccount(match); if (accountPreferenceTimer) { clearTimeout(accountPreferenceTimer); accountPreferenceTimer = null; } return; }
+      if (!accountPreferenceTimer) {
+        accountPreferenceTimer = setTimeout(() => { if (!selectedAccount) fallbackSelectAccount(); }, 2000);
+      }
+      return;
+    }
+    fallbackSelectAccount();
+  }
+  function populateAccountSelect() {
+    const sel = qs('#accountSelect');
+    sel.innerHTML = '';
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— Sélectionner —'; sel.appendChild(o0);
+    [...accounts].forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o); });
+    if (selectedAccount && accounts.has(selectedAccount)) sel.value = selectedAccount;
+    else if (accounts.size === 1 && !accountPreference) { selectedAccount = [...accounts][0]; sel.value = selectedAccount; }
+  }
+  qs('#accountSelect').addEventListener('change', () => {
+    selectedAccount = qs('#accountSelect').value || '';
+    localStorage.setItem('selectedAccount', selectedAccount);
+    if (selectedAccount) {
+      initialDataSent = false;
+      resetTradesView();
+      if (isSimAccountName(selectedAccount)) recomputeKpisForSim();
+      requestInitialData(selectedAccount);
+    }
+  });
+
+  // === HISTORIQUE (303→304) + INIT
+  function requestInitialData(account) {
+    if (!client || !state.connected || !account || initialDataSent) return;
+    resetTradesView();
+    showStatusMessage('Chargement des données initiales...', 'info');
+
+    client.send({Type: 601, RequestID: 4, TradeAccount: account});  // account balance
+    client.send({Type: 305, RequestID: 21, TradeAccount: account}); // open positions
+    client.send({Type: 300, RequestID: 22, RequestAllOrders: 1, TradeAccount: account}); // orders
+
+		const from = qs('#fromDate').value;
+		const to   = qs('#toDate').value;
+
+		if (from || to) {
+			// Fenêtre "utilisateur"
+			const toSecUser   = to   ? Math.floor(new Date(to   + 'T23:59:59').getTime() / 1000) : Math.floor(Date.now()/1000);
+			const fromSecUser = from ? Math.floor(new Date(from + 'T00:00:00').getTime() / 1000) : (toSecUser - 30*24*3600);
+
+			// Mémorise la vraie fenêtre pour le filtrage d'affichage
+			FILTER_FROM_MS = fromSecUser * 1000;
+			FILTER_TO_MS   = toSecUser   * 1000;
+
+			// Recule le début pour récupérer du contexte (ouverture de la veille, etc.)
+			const fetchFromSec = Math.max(0, fromSecUser - CONTEXT_BACK_SEC);
+
+			const reqId = Math.floor(Math.random() * 1e6);
+			currentHistoryReqId = reqId;
+			isLoadingHistory = true;
+			setRefreshIndicator('active');
+
+			client.send({
+				Type: 303,
+				RequestID: reqId,
+				TradeAccount: account,
+				StartDateTime: fetchFromSec,   // <-- contexte
+				EndDateTime: toSecUser
+			});
+			startWatchdog('history', reqId);
+			qs('#emptyMsg').style.display = 'none';
+			qs('#statusPill').textContent = 'Historique en cours...';
+		}
+
+    // Lancer polling KPI + filet de sécurité des fills récents
+    startKpiPolling(account);
+    startFillsPolling();
+
+    initialDataSent = true;
+  }
+  const refreshHistoryForSelectedAccount = () => {
+    if (!client || !state.connected || !selectedAccount) return;
+    resetTradesView();
+    showStatusMessage('Actualisation de l\'historique...', 'info', 3000);
+
+		const from = qs('#fromDate').value;
+		const to   = qs('#toDate').value;
+
+		// Fenêtre "utilisateur"
+		const toSecUser   = to   ? Math.floor(new Date(to   + 'T23:59:59').getTime() / 1000) : Math.floor(Date.now()/1000);
+		const fromSecUser = from ? Math.floor(new Date(from + 'T00:00:00').getTime() / 1000) : (toSecUser - 30*24*3600);
+
+		// Mémorise la vraie fenêtre pour le filtrage d'affichage
+		FILTER_FROM_MS = fromSecUser * 1000;
+		FILTER_TO_MS   = toSecUser   * 1000;
+
+		// Contexte en amont
+		const fetchFromSec = Math.max(0, fromSecUser - CONTEXT_BACK_SEC);
+
+		const reqId = Math.floor(Math.random() * 1e6);
+		currentHistoryReqId = reqId;
+		isLoadingHistory = true;
+		setRefreshIndicator('active');
+		client.send({
+			Type: 303,
+			RequestID: reqId,
+			TradeAccount: selectedAccount,
+			StartDateTime: fetchFromSec,   // <-- contexte
+			EndDateTime: toSecUser
+		});
+		startWatchdog('history', reqId);
+		qs('#emptyMsg').style.display = 'none';
+		qs('#statusPill').textContent = 'Historique en cours...';
+  };
+
+  // === CONNEXION
+  function connect() {
+    const url = qs('#dtcUrl').value.trim();
+    accountPreference = qs('#tradeAccount').value.trim();
+    if (!url) { showStatusMessage('Veuillez saisir une URL WebSocket valide', 'error'); return; }
+
+    localStorage.setItem('dtcUrl', url);
+    if (accountPreference) localStorage.setItem('tradeAccount', accountPreference);
+
+    manualDisconnect = false;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    reconnectAttempts = 0;
+
+    if (client) { client.close(); client = null; }
+
+    const connectBtn = qs('#btnConnect');
+    setButtonLoading(connectBtn, true);
+
+    client = new DTCClient(url);
+
+    client.onOpen = () => {
+			const latEl = document.getElementById('latency');
+			if (latEl) latEl.textContent = '⏱ …';
+      state.connected = true;
+      setStatus(true, 'Connecté');
+      qs('#statusPill').textContent = 'Connecté au DTC';
+      setButtonLoading(connectBtn, false);
+      showStatusMessage('Connexion établie avec succès', 'success', 3000);
+      reconnectAttempts = 0;
+
+      client._hbIntervalSec = 30;
+      client.send({
+        Type: 1,                      // LOGON_REQUEST
+        ProtocolVersion: 8,
+        HeartbeatIntervalInSeconds: client._hbIntervalSec,
+        ClientName: 'JT Web Journal',
+        Username: '', Password: ''
+      });
+    };
+    client.onClose = () => {
+			const latEl = document.getElementById('latency');
+			if (latEl) latEl.textContent = '⏱ …';						
+      stopKpiPolling();
+      stopFillsPolling();
+      state.connected = false;
+      setStatus(false, 'Déconnecté');
+      qs('#statusPill').textContent = 'Déconnecté';
+      setButtonLoading(connectBtn, false);
+      if (!manualDisconnect) {
+        showStatusMessage('Connexion fermée, tentative de reconnexion...', 'warning');
+        scheduleReconnect();
+      }
+    };
+    client.onError = (e) => {
+			const latEl = document.getElementById('latency');
+			if (latEl) latEl.textContent = '⏱ …';			
+      stopKpiPolling();
+      stopFillsPolling();
+      state.connected = false;
+      setStatus(false, 'Erreur connexion', true);
+      qs('#statusPill').textContent = 'Erreur connexion';
+      setButtonLoading(connectBtn, false);
+      showStatusMessage('Erreur de connexion: ' + (e?.message || 'inconnue'), 'error');
+      console.error(e);
+      scheduleReconnect();
+    };
+    client.onMessage = handleDTCMessage;
+
+    setStatus(true, 'Connexion…');
+    qs('#statusPill').textContent = 'Connexion…';
+    showStatusMessage('Connexion en cours...', 'info', 2000);
+
+    try { client.connect(); }
+    catch (error) {
+      setButtonLoading(connectBtn, false);
+      showStatusMessage('Impossible de se connecter: ' + error.message, 'error');
+      console.error('Connection error:', error);
+    }
+  }
+  function disconnect() {
+    manualDisconnect = true;
+    stopKpiPolling();
+    stopFillsPolling();
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (client) { client.close(); client = null; }
+    setStatus(false, 'Déconnecté');
+    qs('#statusPill').textContent = 'Déconnecté';
+    showStatusMessage('Déconnexion demandée', 'info', 2000);
+    openPositionsNow.clear();
+  }
+
+  // === GESTION DES MESSAGES DTC (avec Patch B & C)
+  function handleDTCMessage(msg) {
+    try {
+      // 2 = LOGON_RESPONSE → demander la liste des comptes
+      if (msg.Type === 2) {
+        resetTradesView();
+        accounts.clear();
+        populateAccountSelect();
+        selectedAccount = '';
+        initialDataSent = false;
+        usesMultiplePositions = !!(msg.UsesMultiplePositionsPerSymbolAndTradeAccount === 1 || msg.UsesMultiplePositionsPerSymbolAndTradeAccount === '1' || msg.UsesMultiplePositionsPerSymbolAndTradeAccount === true);
+        client.send({Type: 400, RequestID: 1}); // ACCOUNTS_LIST_REQUEST
+        return;
+      }
+
+      // 401 = ACCOUNTS_LIST_RESPONSE (stream)
+      if (msg.Type === 401) {
+        if (msg.TradeAccount) {
+          accounts.add(msg.TradeAccount);
+          populateAccountSelect();
+          trySelectPreferredAccount();
+        }
+        return;
+      }
+
+      // 600/603 = Account balance & PnL (KPI)
+      if ((msg.Type === 600 || msg.Type === 603) && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+        const cash  = (msg.CashBalance ?? msg.Balance ?? null);
+        const avail = (msg.BalanceAvailableForNewPositions ?? msg.AvailableFunds ?? null);
+        const daily = (msg.DailyProfitLoss ?? null);
+
+        const isSim = isSimAccountName(selectedAccount);
+        const needsFallback = isSim && (cash == null || cash === 0) && (avail == null || avail === 0) && (daily == null || daily === 0);
+
+        if (!needsFallback) {
+          if (cash != null) {
+            state.lastCashBalance = safeNumber(cash);
+            state.lastCashBalanceAccount = msg.TradeAccount || selectedAccount;
+            if (state.initialBalance === null && Number.isFinite(state.lastCashBalance)) state.initialBalance = state.lastCashBalance;
+            qs('#kpiBalance').textContent = fmt(cash, 2);
+          }
+          if (avail != null) qs('#kpiAvailable').textContent = fmt(avail, 2);
+          if (daily != null) qs('#kpiDailyPL').textContent = fmt(daily, 2);
+        } else {
+          // Sim: fallback local si pas de KPI serveurs utiles
+          recomputeKpisForSim();
+        }
+        updateCapitalDonut();
+        updateAdvancedPanel();
+        return;
+      }
+
+	// 306 = POSITION_UPDATE → maintient le snapshot openPositionsNow
+	if (msg.Type === 306 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+		// Cas "NoPositions" → vide le snapshot
+		if (msg.NoPositions === 1) {
+			openPositionsNow.clear();
+			// on garde aussi un miroir "lisible" pour l'UI
+			state.perSymbolPos.clear();
+			return;
+		}
+		const sym = safeString(msg.Symbol);
+		if (!sym) return;
+
+		const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
+		const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
+		const avgNorm = normalizePrice(sym, avgRaw);
+		const posId   = safeString(msg.PositionIdentifier ?? '') || null;
+
+		// clé selon la capability serveur
+		const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
+
+		openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
+
+		// miroir simple par symbole (somme nette + moyenne pondérée) pour l'UI
+		let netQty = 0, wSum = 0, qSum = 0;
+		for (const [k, p] of openPositionsNow) {
+			if ((k.split('|')[0]) === sym) {
+				netQty += p.qty;
+				const w = Math.abs(p.qty);
+				if (w > 0) { wSum += p.avg * w; qSum += w; }
+			}
+		}
+		const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
+		state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
+		return;
+	}
+
+			// 301 = ORDER_UPDATE (live fills)
+			if (msg.Type === 301 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+				const hasFill =
+					msg.OrderUpdateReason === 4 || msg.OrderUpdateReason === 5 ||
+					(safeNumber(msg.LastFillQuantity, 0) > 0 &&
+						(safeNumber(msg.LastFillPrice, 0) > 0 || safeNumber(msg.AverageFillPrice, 0) > 0));
+
+				if (!hasFill) return;
+
+				const side  = sideFrom(msg.BuySell ?? msg.Side);
+				const qty   = safeNumber(msg.LastFillQuantity ?? msg.FilledQuantity ?? msg.Quantity ?? 0);
+				const price = safeNumber(msg.LastFillPrice ?? msg.AverageFillPrice ?? 0);
+				const ts    = parseDtcTime(msg.LastFillDateTime ?? msg.LastFillDateTimeWithMilliseconds ?? Date.now()/1000);
+				const comm  = safeNumber(msg.Commission ?? 0);
+
+				if (isLoadingHistory) {
+					pendingLiveFills.push({ symbol: msg.Symbol, side, qty, price, ts, comm });
+					return;
+				}
+
+				// 🔧 NOUVEAU : tente d'utiliser un identifiant d’exécution s’il existe
+				const execId = safeString(
+					msg.UniqueExecutionID ?? msg.ExecutionID ?? msg.ServerOrderID ?? msg.OrderID ?? ''
+				);
+				const exactKey = execId ? `X|${execId}` : null;
+
+				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey);
+				return;
+			}
+
+      // 304 = HISTORICAL_ORDER_FILL_RESPONSE
+      if (msg.Type === 304) {
+        // Filtrer par requête si on en a une en cours
+        if (currentHistoryReqId !== null && msg.RequestID !== undefined && msg.RequestID !== currentHistoryReqId) return;
+
+        // Fin de stream ?
+        if (msg.NoOrderFills === 1) {
+          isLoadingHistory = false;
+
+          if (state.realizedEvents.length === 0) {
+            const em = qs('#emptyMsg');
+            if (em) { em.style.display = 'block'; em.textContent = 'Aucun fill renvoyé pour la période sélectionnée et le compte indiqué.'; }
+          }
+
+          qs('#statusPill').textContent = 'Historique chargé';
+          currentHistoryReqId = null;
+          showStatusMessage('Historique chargé avec succès', 'success', 3000);
+
+          // Rejoue le tampon de fills live arrivés pendant le chargement
+          if (pendingLiveFills.length) {
+            for (const f of pendingLiveFills) applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm);
+            pendingLiveFills.length = 0;
+          }
+          setRefreshIndicator('done');
+
+					if (inFlight.reqId === msg.RequestID) clearWatchdog();
+					setRefreshIndicator('done');
+          
+          return;
+        }
+				// Détection "début de flux" -> assure l'allumage vert
+				if (msg.MessageNumberForRequest === 1 || msg.MessageNumber === 1) {
+					setRefreshIndicator('active');
+				}
+
+        // Bufferiser puis traiter quand total reçu
+        _fillsBuffer.push(msg);
+        const total = msg.TotalNumberMessagesForRequest ?? msg.TotalNumberMessages;
+        const num   = msg.MessageNumberForRequest ?? msg.MessageNumber;
+        if (total && num && num === total) { processHistoricalFills(); }
+        return;
+      }
+		updateLatency();
+    } catch (error) {
+      console.error('Erreur lors du traitement du message DTC:', error);
+      showStatusMessage('Erreur lors du traitement des données', 'error', 3000);
+    }
+  }
+
+  function processHistoricalFills() {
+    try {
+      // tri par DateTime croissant
+      _fillsBuffer.sort((a,b)=> safeNumber(a.DateTime) - safeNumber(b.DateTime));
+
+      const maxFills = Math.max(1, safeNumber(qs('#maxFills').value) || 500);
+      const buffer = _fillsBuffer.length > maxFills
+        ? _fillsBuffer.slice(_fillsBuffer.length - maxFills)
+        : _fillsBuffer;
+
+      let tradesCount = 0;
+
+      for (const f of buffer) {
+		checkClockDrift(safeNumber(f.DateTime));
+        const symbol = safeString(f.Symbol) || '—';
+        const price  = safeNumber(f.Price);
+        const qty    = safeNumber(f.Quantity);
+        const side   = sideFrom(f.BuySell);
+        const ts     = parseDtcTime(f.DateTime);
+        if (!side || !qty || !price) continue;
+
+        const comm = safeNumber(f.Commission ?? 0);
+        // Utilise la même pipeline que le live (dédup incluse)
+        const beforeEvents = state.realizedEvents.length;
+        applyFill(symbol, side, qty, price, ts, comm);
+        tradesCount += Math.max(0, state.realizedEvents.length - beforeEvents);
+
+        state.fills.push(f);
+      }
+
+      _fillsBuffer.length = 0;
+
+      qs('#statusPill').textContent = 'Historique chargé';
+      currentHistoryReqId = null;
+      isLoadingHistory = false;
+
+      const em = qs('#emptyMsg');
+      if (em) em.style.display = tradesCount ? 'none' : 'block';
+
+      showStatusMessage(`${tradesCount} trades chargés`, 'success', 3000);
+
+      // Après l'historique, on force un KPI refresh + polling sécurisé
+      recomputeKpisForSim();
+      refreshCharts();
+      requestKpisNow();
+
+    } catch (error) {
+      console.error('Erreur lors du traitement de l\'historique:', error);
+      showStatusMessage('Erreur lors du traitement de l\'historique', 'error');
+      isLoadingHistory = false;
+    }
+    setRefreshIndicator('done');
+    if (inFlight.reqId === currentHistoryReqId) clearWatchdog();
+  }
+
+  // === LISTENERS UI
+  qs('#btnConnect').addEventListener('click', connect);
+  qs('#btnDisconnect').addEventListener('click', disconnect);
+
+  // Reset Zoom
+  qs('#btnResetZoom')?.addEventListener('click', () => {
+    try {
+      if (ensureZoomStatus() && equity.resetZoom && typeof equity.resetZoom === 'function') {
+        equity.resetZoom();
+        showStatusMessage('Zoom et position réinitialisés', 'success', 2000);
+      } else {
+        if (equity && equity.options && equity.options.scales) {
+          delete equity.options.scales.x.min; delete equity.options.scales.x.max;
+          delete equity.options.scales.y.min; delete equity.options.scales.y.max;
+          equity.update();
+          showStatusMessage('Vue réinitialisée (reset manuel)', 'success', 2000);
+        } else {
+          showStatusMessage('Impossible de réinitialiser - rechargez la page', 'warning', 3000);
+        }
+      }
+    } catch (error) {
+      console.error('[Reset] Erreur:', error);
+      refreshCharts();
+      showStatusMessage('Vue réinitialisée par rechargement des données', 'info', 2000);
+    }
+  });
+
+  // Retry Zoom (re-détection + reconfigure)
+  qs('#btnRetryZoom')?.addEventListener('click', () => {
+    const ok = ensureZoomStatus();
+    if (ok && typeof window.reconfigureEquityChart === 'function') {
+      window.reconfigureEquityChart();
+    }
+    setRetryZoomVisibility();
+    showStatusMessage(ok ? 'Plugin zoom détecté et activé ✅' : 'Plugin zoom introuvable (vérifiez l’ordre des scripts)', ok ? 'success' : 'error', 2500);
+  });
+  // Aides UI zoom (affichage du curseur etc.)
+  if (ensureZoomStatus()) {
+    setTimeout(() => {
+      try {
+        if (equity && equity.options.plugins && equity.options.plugins.zoom) {
+          console.log('[Chart] Configuration zoom OK');
+          console.log('[Chart] Pan enabled:', equity.options.plugins.zoom.pan?.enabled);
+          console.log('[Chart] Zoom enabled:', equity.options.plugins.zoom.zoom?.wheel?.enabled);
+          console.log('[Chart] resetZoom disponible:', typeof equity.resetZoom === 'function');
+        } else if (typeof window.reconfigureEquityChart === 'function') {
+          window.reconfigureEquityChart();
+        }
+      } catch (error) { console.error('[Chart] Erreur test config:', error); }
+    }, 1000);
+
+    const canvas = qs('#equityCurve');
+    if (canvas) {
+      let shiftPressed = false;
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') {
+          shiftPressed = true;
+          if (canvas.matches(':hover')) {
+            canvas.style.cursor = 'grab';
+            canvas.title = 'SHIFT détecté - Cliquez et maintenez pour glisser';
+          }
+        }
+      });
+      document.addEventListener('keyup',   (e) => {
+        if (e.key === 'Shift') {
+          shiftPressed = false;
+          canvas.style.cursor = 'crosshair';
+          canvas.title = 'Survolez les points pour voir les détails des trades';
+        }
+      });
+      canvas.addEventListener('mouseenter', () => {
+        if (shiftPressed) {
+          canvas.style.cursor = 'grab';
+          canvas.title = 'SHIFT détecté - Cliquez et maintenez pour glisser';
+        } else {
+          canvas.title = 'Survolez les points pour voir les détails des trades';
+        }
+      });
+      canvas.addEventListener('mouseleave', () => {
+        canvas.style.cursor = 'crosshair';
+        canvas.title = '';
+      });
+      canvas.addEventListener('mousedown',  (e) => {
+        if (e.shiftKey) {
+          canvas.style.cursor = 'grabbing';
+          canvas.title = 'Glissez maintenant pour déplacer la vue';
+        }
+      });
+      canvas.addEventListener('mouseup',    () => {
+        canvas.style.cursor = 'crosshair';
+        canvas.title = 'Survolez les points pour voir les détails des trades';
+      });
+    }
+  } else {
+    console.warn('[Chart] Plugin zoom non disponible initialement - vérification faite.');
+  }
+
+  // === Date range -> refresh (debounce)
+  const debounce = (fn, delay = 600) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); }; };
+  const onDateChange = debounce(() => refreshHistoryForSelectedAccount(), 600);
+  qs('#fromDate').addEventListener('change', onDateChange);
+  qs('#toDate').addEventListener('change', onDateChange);
+
+  // === SETTINGS & THEME
+  const VARS = ['--bg','--panel','--panel-2','--text','--muted','--accent','--accent-2','--green','--red','--amber','--slate','--btn-preset-text','--btn-preset-text-hover'];
+  const setVar = (k, v) => document.documentElement.style.setProperty(k, v);
+
+  const $drawer  = qs('#settingsDrawer');
+  const $overlay = qs('#settingsOverlay');
+  const $open    = qs('#openSettings');
+  const $close   = qs('#closeSettings');
+
+	function openDrawer() {
+		$drawer.classList.add('open');
+		$overlay.classList.add('open');
+		$drawer.setAttribute('aria-hidden','false');
+		document.body.classList.add('drawer-open'); // ← ajoute la classe
+		syncInputsFromVars();
+	}
+
+	function closeDrawer() {
+		$drawer.classList.remove('open');
+		$overlay.classList.remove('open');
+		$drawer.setAttribute('aria-hidden','true');
+		document.body.classList.remove('drawer-open'); // ← enlève la classe
+	}
+
+  $open.addEventListener('click', openDrawer);
+  $close.addEventListener('click', closeDrawer);
+  $overlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $drawer.classList.contains('open')) closeDrawer(); });
+
+  function hex(v) {
+    const s=(v||'').trim();
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)) return s;
+    const ctx=document.createElement('canvas').getContext('2d');
+    ctx.fillStyle = s || '#000000'; return ctx.fillStyle;
+  }
+  function saveTheme() {
+    const obj = Object.fromEntries(VARS.map(k => [k, getVar(k)]));
+    localStorage.setItem('themeVars', JSON.stringify(obj));
+    localStorage.setItem('symbolPalette', JSON.stringify(PALETTE));
+  }
+  function loadTheme() {
+    try {
+      const t = JSON.parse(localStorage.getItem('themeVars') || '{}');
+      for (const k of VARS) { if (t[k]) setVar(k, t[k]); }
+      const p = JSON.parse(localStorage.getItem('symbolPalette') || 'null');
+      if (Array.isArray(p) && p.length) {
+        for (let i=0;i<Math.min(p.length, PALETTE.length);i++) PALETTE[i]=p[i];
+      }
+    } catch (e) { console.warn('Erreur lors du chargement du thème:', e); }
+  }
+  function syncInputsFromVars() {
+    qsa('[data-var]').forEach(inp => {
+      const k = inp.getAttribute('data-var');
+      const v = getVar(k) || '#000000';
+      inp.value = hex(v);
+    });
+    qsa('[data-var-input]').forEach(inp => {
+      const k = inp.getAttribute('data-var-input');
+      const v = getVar(k) || '#000000';
+      inp.value = hex(v);
+    });
+
+    // Palette symboles
+    const grid = qs('#paletteGrid');
+    if (grid && !grid.dataset.ready) {
+      grid.dataset.ready = '1';
+      for (let i=0;i<PALETTE.length;i++) {
+        const wrap = document.createElement('div'); wrap.className='palette-item';
+        const lab = document.createElement('span'); lab.textContent = String(i+1).padStart(2,'0');
+        lab.style.fontSize='12px'; lab.style.color='var(--muted)';
+        const col = document.createElement('input'); col.type='color'; col.value=PALETTE[i]; col.dataset.paletteIndex=i;
+        wrap.appendChild(lab); wrap.appendChild(col); grid.appendChild(wrap);
+      }
+      grid.addEventListener('input', (e) => {
+        const i = e.target?.dataset?.paletteIndex; if (i == null) return;
+        PALETTE[i] = e.target.value; saveTheme(); refreshCharts();
+      });
+    } else if (grid) {
+      grid.querySelectorAll('input[type=color]').forEach((el, i) => { el.value = PALETTE[i]; });
+    }
+  }
+
+  document.addEventListener('input', (e) => {
+    if (e.target.matches('[data-var]')) {
+      const k = e.target.getAttribute('data-var');
+      setVar(k, e.target.value); saveTheme(); updateChartsTheme();
+      const textInput = qs(`[data-var-input="${k}"]`); if (textInput) textInput.value = e.target.value;
+    }
+    if (e.target.matches('[data-var-input]')) {
+      const k = e.target.getAttribute('data-var-input');
+      const colorInput = qs(`[data-var="${k}"]`);
+      try {
+        setVar(k, e.target.value);
+        if (colorInput) colorInput.value = hex(e.target.value);
+        saveTheme(); updateChartsTheme();
+      } catch {
+        console.warn('Couleur invalide:', e.target.value);
+      }
+    }
+  });
+
+  const PRESETS = {
+    indigo: {'--accent':'#4f46e5','--accent-2':'#7c3aed','--bg':'#0b0f17','--panel':'#111827','--panel-2':'#0f172a','--text':'#e5e7eb','--muted':'#9ca3af','--green':'#22c55e','--red':'#ef4444','--amber':'#f59e0b','--slate':'#475569'},
+    emerald:{'--accent':'#059669','--accent-2':'#10b981','--bg':'#0a0f0b','--panel':'#0f172a','--panel-2':'#0b1220','--text':'#e5f7ef','--muted':'#91b0a0','--green':'#10b981','--red':'#ef4444','--amber':'#f59e0b','--slate':'#374151'},
+    amber:  {'--accent':'#d97706','--accent-2':'#f59e0b','--bg':'#120e07','--panel':'#1f2937','--panel-2':'#111827','--text':'#fff7ed','--muted':'#fcd34d','--green':'#22c55e','--red':'#ef4444','--amber':'#f59e0b','--slate':'#6b7280'},
+    rose:   {'--accent':'#e11d48','--accent-2':'#fb7185','--bg':'#13070f','--panel':'#1f1020','--panel-2':'#120915','--text':'#ffe4e6','--muted':'#fda4af','--green':'#22c55e','--red':'#ef4444','--amber':'#f59e0b','--slate':'#64748b'},
+    cyber:  {'--accent':'#06b6d4','--accent-2':'#22d3ee','--bg':'#05060a','--panel':'#0b1020','--panel-2':'#0a0f1a','--text':'#e0fbfc','--muted':'#94a3b8','--green':'#22c55e','--red':'#ef4444','--amber':'#f59e0b','--slate':'#334155'}
+  };
+
+  document.addEventListener('click', (e) => {
+    if (e.target.matches('[data-preset]')) {
+      const preset = e.target.getAttribute('data-preset');
+      const p = PRESETS[preset];
+      if (p) {
+        for (const k of Object.keys(p)) setVar(k, p[k]);
+        saveTheme(); updateChartsTheme(); syncInputsFromVars();
+        showStatusMessage(`Thème ${preset} appliqué`, 'success', 2000);
+      }
+    }
+    if (e.target.matches('[data-reset]')) {
+      localStorage.removeItem('themeVars');
+      localStorage.removeItem('symbolPalette');
+      showStatusMessage('Thème réinitialisé, rechargement...', 'info', 2000);
+      setTimeout(() => location.reload(), 1000);
+    }
+  });
+
+  function updateChartsTheme() {
+    pie1.data.datasets[0].backgroundColor = [ getVar('--green')||'#22c55e', getVar('--red')||'#ef4444' ];
+    pie1.update('none');
+    updateCapitalDonut();
+    if (pie2.data.labels?.length) {
+      pie2.data.datasets[0].backgroundColor = pie2.data.labels.map(lbl => colorForSymbol(lbl));
+      pie2.update('none');
+    }
+  }
+
+  // === DRAG & DROP LAYOUT
+  const LAYOUT_KEY = 'jt_layout_v2';
+	// Disposition par défaut capturée depuis le DOM au chargement
+	const DEFAULT_LAYOUT = (() => {
+		const data = {};
+		document.querySelectorAll('.drag-zone[id]').forEach(zone => {
+			data[zone.id] = [...zone.children]
+				.filter(c => c.classList?.contains('widget'))
+				.map(c => c.dataset.widgetId);
+		});
+		return data;
+	})();		
+  let dragged = null;
+  function enableLayoutEdit(on) {
+    document.body.classList.toggle('layout-edit', !!on);
+    localStorage.setItem('layoutEditMode', on ? '1' : '0');
+  }
+  function restoreLayoutEdit() {
+    enableLayoutEdit(localStorage.getItem('layoutEditMode') === '1');
+    const tgl = qs('#layoutEditToggle');
+    if (tgl) tgl.checked = document.body.classList.contains('layout-edit');
+  }
+  function saveLayout() {
+    const data = {};
+    qsa('.drag-zone[id]').forEach(zone => {
+      data[zone.id] = [...zone.children]
+        .filter(c => c.classList?.contains('widget'))
+        .map(c => c.dataset.widgetId);
+    });
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify(data));
+  }
+  function loadLayout() {
+    try {
+      const data = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null');
+      if (!data) return;
+      for (const [zoneId, ids] of Object.entries(data)) {
+        const zone = qs(`#${zoneId}`); if (!zone) continue;
+        for (const id of ids) {
+          const el = qs(`[data-widget-id="${id}"]`);
+          if (el) zone.appendChild(el);
+        }
+      }
+    } catch (e) { console.warn('Erreur lors du chargement de la disposition:', e); }
+  }
+  function getDragAfterElement(container, x, y) {
+    const els = [...container.querySelectorAll('.widget:not(.dragging)')];
+    if (!els.length) return null;
+    const offsets = els.map(el => {
+      const r = el.getBoundingClientRect();
+      const cx=r.left+r.width/2; const cy=r.top+r.height/2;
+      const d=Math.hypot(x-cx,y-cy);
+      return {el,d};
+    }).sort((a,b)=>a.d-b.d);
+    return offsets[0]?.el || null;
+  }
+  document.addEventListener('mousedown', (e) => {
+    const h = e.target.closest('.drag-handle'); if (!h) return;
+    const w = h.closest('.widget'); if (!w) return;
+    w.setAttribute('draggable','true'); w.dataset.dragOk='1';
+  });
+  document.addEventListener('dragstart', (e) => {
+    const w = e.target.closest?.('.widget');
+    if (!w || w.dataset.dragOk !== '1') { e.preventDefault(); return; }
+    dragged = w; w.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
+  });
+  document.addEventListener('dragend', () => {
+    if (!dragged) return;
+    dragged.classList.remove('dragging');
+    dragged.removeAttribute('draggable');
+    delete dragged.dataset.dragOk;
+    dragged = null; saveLayout();
+  });
+  qsa('.drag-zone').forEach(zone => {
+    zone.addEventListener('dragover', (e) => {
+      if (!dragged) return;
+      e.preventDefault();
+      const after = getDragAfterElement(zone, e.clientX, e.clientY);
+      if (after == null) zone.appendChild(dragged); else zone.insertBefore(dragged, after);
+    });
+  });
+
+	function resetLayout() {
+		// 1) Supprimer le layout sauvegardé
+		localStorage.removeItem(LAYOUT_KEY);
+
+		// 2) Annuler un drag en cours le cas échéant
+		if (typeof dragged !== 'undefined' && dragged) {
+			dragged.classList.remove('dragging');
+			dragged.removeAttribute('draggable');
+		}
+
+		// 3) Réinjecter chaque widget dans sa zone d'origine et dans l'ordre par défaut
+		for (const [zoneId, ids] of Object.entries(DEFAULT_LAYOUT)) {
+			const zone = document.getElementById(zoneId);
+			if (!zone) continue;
+			ids.forEach(id => {
+				const el = document.querySelector(`[data-widget-id="${id}"]`);
+				if (el) {
+					el.classList.remove('dragging');
+					el.removeAttribute('draggable');
+					delete el.dataset.dragOk;
+					zone.appendChild(el);
+				}
+			});
+		}
+
+  // 4) Si des widgets “orphelins” existent (nouveaux), on les range dans leur zone courante
+  const defaultIds = new Set(Object.values(DEFAULT_LAYOUT).flat());
+  document.querySelectorAll('.widget[data-widget-id]').forEach(w => {
+    if (!defaultIds.has(w.dataset.widgetId)) {
+      const zone = w.closest('.drag-zone') || document.querySelector('.drag-zone');
+      if (zone) zone.appendChild(w);
+    }
+    w.classList.remove('dragging');
+    w.removeAttribute('draggable');
+    delete w.dataset.dragOk;
+  });
+
+  // 5) Sauver la disposition actuelle (pour que ça reste après un vrai reload)
+  saveLayout();
+
+  // 6) Feedback (sans couper la connexion)
+  showStatusMessage('Disposition réinitialisée', 'success', 2000);
+}
+
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'layoutEditToggle') enableLayoutEdit(e.target.checked);
+  });
+  document.addEventListener('click',  (e) => {
+    if (e.target.id === 'resetLayoutBtn') resetLayout();
+  });
+
+	// === Réglage "Calendrier : compact / dépliable" — header classique ===
+	function setupCalendarSettings(){
+	  const widget   = document.querySelector('[data-widget-id="w-eco-cal"]');
+	  if (!widget) return;
+
+	  const scroller = widget.querySelector('#ec-scroller');
+
+	  // UI (tiroir Paramètres)
+	  const selMode       = document.getElementById('calendarMode');             // <select compact|collapsible>
+	  const rowCollapsed  = document.getElementById('calendarCollapsedRow');     // <label> ... checkbox
+	  const chkCollapsed  = document.getElementById('calendarDefaultCollapsed'); // <input type="checkbox">
+	  const rowAutofit    = document.getElementById('calendarAutofitRow');       // <label> ... checkbox
+	  const chkAutofit    = document.getElementById('calendarAutofit');          // <input type="checkbox">
+
+	  // Storage keys
+	  const MODE_KEY      = 'calendar_mode';
+	  const COLLAPSED_KEY = 'collapse_w-eco-cal';
+	  const AUTO_KEY      = 'calendar_autofit';
+
+	  // ===== Header classique (titre + bouton) =====
+	  let header = null, btn = null;
+
+	  function ensureHeaderMarkup(){
+		header = widget.querySelector('.widget-header');
+		if (!header) {
+		  header = document.createElement('div');
+		  header.className = 'widget-header';
+		  header.innerHTML = `
+			<div class="widget-title">📅 Calendrier économique</div>
+			<button class="toggle-collapse" type="button" aria-expanded="true" aria-controls="ec-scroller">Replier</button>
+		  `;
+		  // on insère le header juste avant le scroller
+		  if (scroller) widget.insertBefore(header, scroller);
+		  else widget.prepend(header);
+		}
+		btn = header.querySelector('.toggle-collapse');
+		if (!btn._bound) {
+		  btn.addEventListener('click', () => {
+			const next = !isCollapsed();
+			setCollapsed(next);
+			try { localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0'); } catch {}
+		  });
+		  btn._bound = true;
+		}
+	  }
+
+	  function destroyHeaderMarkup(){
+		widget.removeAttribute('data-collapsed');
+		if (header && header.parentNode) header.parentNode.removeChild(header);
+		header = null; btn = null;
+		if (scroller) scroller.style.display = '';
+	  }
+
+	  function isCollapsed(){
+		return widget.getAttribute('data-collapsed') === '1';
+	  }
+
+	  function setCollapsed(on){
+		widget.setAttribute('data-collapsed', on ? '1' : '0');
+		if (scroller) scroller.style.display = on ? 'none' : '';
+		if (btn) {
+		  btn.setAttribute('aria-expanded', on ? 'false' : 'true');
+		  btn.textContent = on ? 'Déplier' : 'Replier';
+		}
+		if (chkCollapsed) chkCollapsed.checked = !!on;
+	  }
+
+	  // ===== Auto-fit (mode compact) =====
+	  function applyAutoFit(on){
+		widget.classList.toggle('autofit', !!on); // ton CSS gère la hauteur auto en compact
+		try { localStorage.setItem(AUTO_KEY, on ? '1' : '0'); } catch {}
+	  }
+
+	  // ===== Mode (compact vs collapsible) =====
+	  function applyMode(mode){
+		widget.classList.remove('calendar--compact','collapsible','autofit');
+
+		if (mode === 'collapsible') {
+		  widget.classList.add('collapsible');
+		  ensureHeaderMarkup();
+
+		  if (rowCollapsed) rowCollapsed.style.display = '';
+		  if (rowAutofit)   rowAutofit.style.display   = 'none';
+
+		  const savedCollapsed = (localStorage.getItem(COLLAPSED_KEY) === '1');
+		  setCollapsed(savedCollapsed);
+		} else {
+		  // compact
+		  destroyHeaderMarkup();
+		  widget.classList.add('calendar--compact');
+
+		  if (rowCollapsed) rowCollapsed.style.display = 'none';
+		  if (rowAutofit)   rowAutofit.style.display   = '';
+
+		  const wantAutofit = chkAutofit ? chkAutofit.checked : (localStorage.getItem(AUTO_KEY) === '1');
+		  applyAutoFit(!!wantAutofit);
+		}
+
+		try { localStorage.setItem(MODE_KEY, mode); } catch {}
+	  }
+
+	  // ===== INIT (valeurs sauvegardées) =====
+	  const savedMode      = localStorage.getItem(MODE_KEY) || 'compact';
+	  const savedAutofit   = localStorage.getItem(AUTO_KEY) === '1';
+	  const savedCollapsed = localStorage.getItem(COLLAPSED_KEY) === '1';
+
+	  if (selMode)      selMode.value        = savedMode;
+	  if (chkAutofit)   chkAutofit.checked   = savedAutofit;
+	  if (chkCollapsed) chkCollapsed.checked = savedCollapsed;
+
+	  applyMode(savedMode);
+
+	  // ===== LISTENERS =====
+	  if (selMode) selMode.addEventListener('change', () => applyMode(selMode.value));
+
+	  if (chkCollapsed) chkCollapsed.addEventListener('change', () => {
+		if (!selMode || selMode.value !== 'collapsible') return;
+		setCollapsed(chkCollapsed.checked);
+		try { localStorage.setItem(COLLAPSED_KEY, chkCollapsed.checked ? '1' : '0'); } catch {}
+	  });
+
+	  if (chkAutofit) chkAutofit.addEventListener('change', () => {
+		// ne s’applique qu’en compact ; mémorise tout de même la préférence
+		applyAutoFit(chkAutofit.checked);
+	  });
+	}
+
+	// === Paramètres : accordéon par sections (replié par défaut) ===
+	function setupSettingsAccordion(){
+	  const root = document.querySelector('.settings-content');
+	  if (!root || root.dataset.accReady) return;
+	  root.dataset.accReady = '1';
+
+	  // utilitaires
+	  const slug = (s='') =>
+		s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+		 .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+	  const KEY = (id) => `settings_sec_${id}`;
+
+	  function setSectionExpanded(section, expanded, persist){
+		section.classList.toggle('collapsed', !expanded);
+		const btn = section.querySelector('.acc-header');
+		if (btn) btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+		if (persist) {
+		  const id = section.getAttribute('data-section-id') || '';
+		  try { localStorage.setItem(KEY(id), expanded ? '1' : '0'); } catch {}
+		}
+	  }
+
+	  // transforme chaque .section en accordéon
+	  root.querySelectorAll('.section').forEach((section, idx) => {
+		const h4 = section.querySelector('h4');
+		const title = (h4?.textContent || `Section ${idx+1}`).trim();
+		if (h4) h4.remove();
+
+		const body = document.createElement('div');
+		body.className = 'acc-body';
+		while (section.firstChild) body.appendChild(section.firstChild);
+		section.appendChild(body);
+
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'acc-header';
+		btn.setAttribute('aria-expanded', 'false'); // par défaut: fermé
+		btn.innerHTML = `
+		  <span>${title}</span>
+		  <svg class="acc-caret" viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M8 10l4 4 4-4" fill="none" stroke="currentColor"
+				  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+		  </svg>`;
+		section.insertBefore(btn, body);
+
+		const id = section.getAttribute('data-section-id') || slug(title) || `sec-${idx+1}`;
+		section.setAttribute('data-section-id', id);
+
+		// état initial : par défaut REPLIÉ (expanded=false) si aucune préférence stockée
+		const saved = localStorage.getItem(KEY(id));
+		const expanded = (saved == null) ? false : (saved === '1');
+		setSectionExpanded(section, expanded, false);
+
+		btn.addEventListener('click', () => {
+		  const isOpen = btn.getAttribute('aria-expanded') === 'true';
+		  setSectionExpanded(section, !isOpen, true);
+		});
+	  });
+	}
+
+  // === CHARGEMENT FINAL
+  loadLayout();
+  restoreLayoutEdit();
+  loadTheme();
+  updateChartsTheme();
+  window.addEventListener('load', () => { setTimeout(syncInputsFromVars, 0); });
+
+  // Diagnostic final
+  console.assert(typeof saveLayout === 'function', 'Layout persistence functions exist');
+  console.assert(qsa('.widget').length > 0, 'Widgets should exist');
+  console.log('[JT for SC] Application initialisée avec succès');
+
+  // Assure l’état du bouton "Activer Zoom" après init
+  setRetryZoomVisibility();
+  setupCalendarSettings();
+  setupSettingsAccordion()
+});
+</script>
+</body>
+</html>
+
