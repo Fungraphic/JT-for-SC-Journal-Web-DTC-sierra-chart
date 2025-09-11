@@ -41,16 +41,19 @@ Je suis **ouvert à passer le relais** à un(e) maintainer motivé(e).
 1. **En-tête & connexion DTC + KPI**  
    ![Connexion + KPI](docs/dashboard_1.png)
 
-2. **Courbe d’equity + donuts**  
+2. **Calendrier de News**  
+   ![Equity + Donuts](docs/calendar.png)   
+
+3. **Courbe d’equity + donuts**  
    ![Equity + Donuts](docs/dashboard_2.png)
 
-3. **Journal des trades (tableau)**  
+4. **Journal des trades (tableau)**  
    ![Journal des trades](docs/dashboard_3.png)
 
-4. **Panneau Paramètres (thème, palette, layout, calendrier)**  
+5. **Panneau Paramètres (thème, palette, layout, calendrier)**  
    ![Paramètres](docs/dashboard_4.png)
    
-5. **Global Settings->Sierra Chart Server Settings**  
+6. **Global Settings->Sierra Chart Server Settings**  
    ![DTC Server](docs/sierra_dtc.png)   
 
 ---
