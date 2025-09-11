@@ -103,9 +103,11 @@ python -m http.server 8080
 # puis ouvre http://localhost:8080/index.html
 
 B) Ouverture directe du fichier
-Double-clique sur index.html. Selon le navigateur, certaines politiques de sécurité peuvent limiter des fonctions — privilégie l’option A si tu as un doute.
+Double-clique sur index.html. Selon le navigateur, certaines politiques de sécurité peuvent
+limiter des fonctions — privilégie l’option A si tu as un doute.
 
-Connexion DTC : saisis l’URL du serveur (ex. ws://127.0.0.1:11099) dans le champ DTC WebSocket URL, puis Connexion.
+Connexion DTC : saisis l’URL du serveur (ex. ws://127.0.0.1:11099) dans le champ DTC WebSocket URL,
+ puis Connexion.
 
 🔧 Dépendances front incluses
 Chart.js (UMD), hammer.js, chartjs-plugin-zoom, chartjs-adapter-date-fns (déjà présents dans assets/vendor/).
