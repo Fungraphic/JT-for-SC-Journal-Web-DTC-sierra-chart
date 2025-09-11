@@ -29,7 +29,8 @@ Je suis **ouvert à passer le relais** à un(e) maintainer motivé(e).
 - Merci d’ouvrir une issue pour les bugs majeurs avant de proposer une PR.
 
 > Note badges :  
-> • “No Maintenance Intended” indique que je ne garantis pas d’évolutions ni de support, tout en **autorisant forks et réutilisations**. :contentReference[oaicite:3]{index=3}  
+> • “No Maintenance Intended” indique que je ne garantis pas d’évolutions ni de support,
+> tout en **autorisant forks et réutilisations**. :contentReference[oaicite:3]{index=3}  
 > • Les badges sont fournis par **shields.io** (tu peux adapter texte/couleurs). :contentReference[oaicite:4]{index=4}
 
 ---
@@ -60,13 +61,15 @@ Je suis **ouvert à passer le relais** à un(e) maintainer motivé(e).
 
 ## ✨ Fonctionnalités
 
-- **Connexion DTC WebSocket** (ws/wss) + contrôles : URL, Trade Account (optionnel), période, limite de trades, **Connexion/Stop**, état **Connecté/Refresh**.
+- **Connexion DTC WebSocket** (ws/wss) + contrôles : URL, Trade Account (optionnel), période, limite de trades,
+-  **Connexion/Stop**, état **Connecté/Refresh**.
 - **KPI** : Balance, Gains Total, PnL journalier.
 - **Stats avancées** : Win rate, Profit Factor, Expectancy, Recovery Factor, Sharpe/Sortino, Max Drawdown, Streaks, etc.
 - **Courbe d’equity** avec points d’entrée/sortie + **zoom/pan** (molette / `Shift` + glisser) + bouton **Réinitialiser**.
 - **Donuts** : Répartition gagnants/perdants & PnL par symbole (palette par symbole).
 - **Journal des trades** (table responsive).
-- **Paramètres** : thème (variables CSS), palette donuts, **mode édition** (drag des widgets) + **persistance** (layout + couleurs).
+- **Paramètres** : thème (variables CSS), palette donuts,
+- **mode édition** (drag des widgets) + **persistance** (layout + couleurs).
 - **Calendrier économique** intégrable/pliable.
 
 ---
@@ -106,11 +109,12 @@ B) Ouverture directe du fichier
 Double-clique sur index.html. Selon le navigateur, certaines politiques de sécurité peuvent
 limiter des fonctions — privilégie l’option A si tu as un doute.
 
-Connexion DTC : saisis l’URL du serveur (ex. ws://127.0.0.1:11099) dans le champ DTC WebSocket URL,
- puis Connexion.
+Connexion DTC : saisis l’URL du serveur (ex. ws://127.0.0.1:11099)
+dans le champ DTC WebSocket URL, puis Connexion.
 
 🔧 Dépendances front incluses
-Chart.js (UMD), hammer.js, chartjs-plugin-zoom, chartjs-adapter-date-fns (déjà présents dans assets/vendor/).
+Chart.js (UMD), hammer.js, chartjs-plugin-zoom, chartjs-adapter-date-fns
+(déjà présents dans assets/vendor/).
 
 Rien à installer.
 
