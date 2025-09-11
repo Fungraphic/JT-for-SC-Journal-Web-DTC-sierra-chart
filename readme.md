@@ -21,7 +21,8 @@ Je suis **ouvert à passer le relais** à un(e) maintainer motivé(e).
 **Comment aider, vite fait :**
 - **Fork** le dépôt → clone ton fork en local. :contentReference[oaicite:0]{index=0}  
 - Crée une branche (`feat/…`), commite, pousse, puis **ouvre une Pull Request** propre (résumé, étapes de test). :contentReference[oaicite:1]{index=1}
-- Si tu veux devenir **maintainer**, ouvre une issue “Maintainer candidacy” en décrivant ton plan (release, tri des issues, CI).
+- Si tu veux devenir **maintainer**, ouvre une issue:
+- “Maintainer candidacy” en décrivant ton plan (release, tri des issues, CI).
 
 **Bonnes pratiques recommandées :**
 - Ajoute/consulte un `CONTRIBUTING.md` pour les règles de contribution (format des PR, style, tests). :contentReference[oaicite:2]{index=2}
