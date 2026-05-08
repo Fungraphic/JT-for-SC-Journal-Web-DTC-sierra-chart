@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 	<meta http-equiv="Content-Security-Policy" content="
-	  default-src 'self' data: blob: qrc:;
+	  default-src 'self' data: blob: https: qrc:;
 	  script-src 'self' 'unsafe-inline' qrc: https://fxverify.com https://*.fxverify.com;
 	  style-src  'self' 'unsafe-inline' qrc: https://fonts.googleapis.com;
 	  font-src   'self' data: qrc: https://fonts.gstatic.com;
 	  img-src    'self' data: https: qrc:;
-	  connect-src 'self' ws: wss: https:;
+	  connect-src 'self' ws: wss:;
 	  frame-src  https://fxverify.com https://*.fxverify.com;
 	">	 
   
@@ -563,33 +563,11 @@ document.addEventListener('DOMContentLoaded', () => {
       this.onMessage = () => {};
     }
     connect() {
-      if (!/^wss?:\/\//i.test(this.url)) {
-        this.onError(new Error('URL WebSocket invalide: doit commencer par ws:// ou wss://'));
-        return;
-      }
       try { this.ws = new WebSocket(this.url); }
       catch (e) { this.onError(e); return; }
-      this._timedOut = false;
-      this._connectTimer = setTimeout(() => {
-        this._timedOut = true;
-        console.warn('[DTC] Connexion timeout (15s)');
-        try { this.ws.close(); } catch(_) {}
-      }, 15000);
-      this.ws.addEventListener('open', () => {
-        clearTimeout(this._connectTimer);
-        this._timedOut = false;
-        this.onOpen();
-      });
-      this.ws.addEventListener('close', ev => {
-        clearTimeout(this._connectTimer);
-        if (!this._timedOut) this.onClose(ev);
-      });
-      this.ws.addEventListener('error', e => {
-        clearTimeout(this._connectTimer);
-        const wasTimeout = this._timedOut;
-        this._timedOut = false;
-        this.onError(wasTimeout ? new Error('Délai de connexion dépassé (15s)') : e);
-      });
+      this.ws.addEventListener('open', () => this.onOpen());
+      this.ws.addEventListener('close', ev => this.onClose(ev));
+      this.ws.addEventListener('error', e => this.onError(e));
       this.ws.addEventListener('message', ev => {
         const d = ev.data;
         if (typeof d === 'string') this._processChunk(d);
@@ -1919,13 +1897,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const url = qs('#dtcUrl').value.trim();
     accountPreference = qs('#tradeAccount').value.trim();
     if (!url) { showStatusMessage('Veuillez saisir une URL WebSocket valide', 'error'); return; }
-    // Validation renforcée : rejeter les URLs dangereuses (javascript:, data:, etc.)
-    try {
-      const parsed = new URL(url);
-      if (!/^wss?$/i.test(parsed.protocol.replace(/:$/, ''))) {
-        showStatusMessage('Protocole non autorisé : seuls ws:// et wss:// sont acceptés', 'error'); return;
-      }
-    } catch { showStatusMessage('URL invalide', 'error'); return; }
 
     localStorage.setItem('dtcUrl', url);
     if (accountPreference) localStorage.setItem('tradeAccount', accountPreference);
@@ -1942,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', () => {
     client = new DTCClient(url);
 
     client.onOpen = () => {
+			console.log('[DTC][onOpen] WebSocket ouvert, envoi LOGON_REQUEST');
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';
       state.connected = true;
@@ -1961,6 +1933,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     };
     client.onClose = () => {
+			console.log('[DTC][onClose] WebSocket fermé, manualDisconnect:', manualDisconnect);
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';					
       stopKpiPolling();
@@ -1985,8 +1958,8 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus(false, 'Erreur connexion', true);
       qs('#statusPill').textContent = 'Erreur connexion';
       setButtonLoading(connectBtn, false);
+      console.error('[DTC][onError]', e, 'ws.readyState:', client?.ws?.readyState, 'url:', url);
       showStatusMessage('Erreur de connexion: ' + (e?.message || 'inconnue'), 'error');
-      console.error(e);
       scheduleReconnect();
     };
     client.onMessage = handleDTCMessage;
@@ -2020,12 +1993,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Guard : message doit être un objet non null avec un Type valide
       if (!msg || typeof msg !== 'object' || typeof msg.Type === 'undefined') {
         console.warn('[DTC] Message mal formé ignoré :', msg);
-        return;
-      }
-      // Guard : Type doit être un entier raisonnable (DTC messages sont < 1000)
-      const msgType = safeNumber(msg.Type, -1);
-      if (msgType < 0 || msgType > 999 || !Number.isInteger(msgType)) {
-        console.warn('[DTC] Message avec Type invalide ignoré :', msg.Type);
         return;
       }
       // 2 = LOGON_RESPONSE → démarrer heartbeat + demander la liste des comptes
