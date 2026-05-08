@@ -1571,15 +1571,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	// exactKey permet d'utiliser un ID d'exécution serveur si disponible (idéal)
 	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown') {
 		// Validation basique
-		if (!symbol || !qty || !Number.isFinite(price) || !Number.isFinite(ts)) return;
+		if (!symbol || !qty || !Number.isFinite(price) || !Number.isFinite(ts)) { console.warn('[FILL] Ignoré — données invalides', {symbol, side, qty, price, ts}); return; }
 
 		const key = exactKey || approxFillKey(symbol, side, qty, price, ts);
 
-		// 🔧 CORRECTION : Logging amélioré pour diagnostiquer les doublons
 		if (seenFillKeys.has(key)) {
 			fillStats.duplicates++;
-			console.warn(`[DEDUP] Fill ignoré (doublon détecté) - Symbol: ${symbol}, Side: ${side}, Qty: ${qty}, Price: ${price}, Source: ${source}, Key: ${key.substring(0, 50)}...`);
-			return; // déjà vu (exact ou approx)
+			console.warn(`[DEDUP] Fill ignoré (doublon) - ${symbol} ${side===1?'Buy':'Sell'} ${qty}@${price} src=${source} key=${key.substring(0,60)}`);
+			return;
 		}
 
 		fillStats.total++;
@@ -1587,12 +1586,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (source === 'historical') fillStats.historical++;
 		if (source === 'live') fillStats.live++;
 
-		console.log(`[FILL] Traitement - Symbol: ${symbol}, Side: ${side}, Qty: ${qty}, Price: ${price}, Source: ${source}, ExactKey: ${exactKey ? 'OUI' : 'NON'}`);
 		seenFillKeys.add(key);
 
-		// On garde aussi une “seconde chance” avec une clé approx systématique,
-		// utile si on a eu une exactKey une fois et pas la fois suivante.
-		seenFillKeys.add(approxFillKey(symbol, side, qty, price, ts));
+		// Si on a une exactKey, on ajoute AUSSI la clé approx (pour le cas
+		// où le même fill arrive ensuite SANS exactKey).
+		// Si on n'a PAS d'exactKey, ne pas ajouter la clé approx (elle est déjà key).
+		if (exactKey) {
+			seenFillKeys.add(approxFillKey(symbol, side, qty, price, ts));
+		}
 
 		// Sécurité mémoire : si le Set dépasse 10000 entrées, on ne garde que les 5000 plus récentes
 		if (seenFillKeys.size > 10000) {
@@ -1620,6 +1621,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		// Traiter les trades fermés par le moteur Flat-to-Flat
 		for (const t of trades) {
 			const inRange = shouldIncludeTrade(t.closeTime);
+
+			if (!inRange) {
+				console.log(`[FTF] Trade hors fenêtre ignoré - ${t.symbol} ${t.side===1?'Buy':'Sell'} ${t.qty} PnL=$${t.pnl.toFixed(2)} closeTime=${new Date(t.closeTime).toISOString()}`);
+			}
 
 			if (inRange) {
 				// Ajouter le P&L du trade complet (les commissions sont déjà déduites par le moteur)
@@ -1875,34 +1880,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		const from = qs('#fromDate').value;
 		const to   = qs('#toDate').value;
 
-		if (from || to) {
-			// Fenêtre "utilisateur"
-			const toSecUser   = to   ? Math.floor(new Date(to   + 'T23:59:59').getTime() / 1000) : Math.floor(Date.now()/1000);
-			const fromSecUser = from ? Math.floor(new Date(from + 'T00:00:00').getTime() / 1000) : (toSecUser - 30*24*3600);
+		// Toujours charger l'historique — fenêtre par défaut : aujourd'hui
+		const toSecUser   = to   ? Math.floor(new Date(to   + 'T23:59:59').getTime() / 1000) : Math.floor(Date.now()/1000);
+		const fromSecUser = from ? Math.floor(new Date(from + 'T00:00:00').getTime() / 1000) : (toSecUser - 30*24*3600);
 
-			// Mémorise la vraie fenêtre pour le filtrage d'affichage
-			FILTER_FROM_MS = fromSecUser * 1000;
-			FILTER_TO_MS   = toSecUser   * 1000;
+		// Mémorise la vraie fenêtre pour le filtrage d'affichage
+		FILTER_FROM_MS = fromSecUser * 1000;
+		FILTER_TO_MS   = toSecUser   * 1000;
 
-			// Recule le début pour récupérer du contexte (ouverture de la veille, etc.)
-			const fetchFromSec = Math.max(0, fromSecUser - CONTEXT_BACK_SEC);
+		// Recule le début pour récupérer du contexte (ouverture de la veille, etc.)
+		const fetchFromSec = Math.max(0, fromSecUser - CONTEXT_BACK_SEC);
 
-			const reqId = Math.floor(Math.random() * 1e6);
-			currentHistoryReqId = reqId;
-			isLoadingHistory = true;
-			setRefreshIndicator('active');
+		const reqId = Math.floor(Math.random() * 1e6);
+		currentHistoryReqId = reqId;
+		isLoadingHistory = true;
+		setRefreshIndicator('active');
 
-			client.send({
-				Type: 303,
-				RequestID: reqId,
-				TradeAccount: account,
-				StartDateTime: fetchFromSec,   // <-- contexte
-				EndDateTime: toSecUser
-			});
-			startWatchdog('history', reqId);
-			qs('#emptyMsg').style.display = 'none';
-			qs('#statusPill').textContent = 'Historique en cours...';
-		}
+		client.send({
+			Type: 303,
+			RequestID: reqId,
+			TradeAccount: account,
+			StartDateTime: fetchFromSec,
+			EndDateTime: toSecUser
+		});
+		startWatchdog('history', reqId);
+		qs('#emptyMsg').style.display = 'none';
+		qs('#statusPill').textContent = 'Historique en cours...';
 
     // Lancer polling KPI + filet de sécurité des fills récents
     startKpiPolling(account);
@@ -2336,6 +2339,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 🔧 NOUVEAU : Afficher les statistiques de traitement
       logFillStats();
+
+      // Résumé Flat-to-Flat pour debug
+      console.log(`[FTF] === Résumé après historique ===`);
+      console.log(`[FTF] Fills traités: ${fillStats.total}, Doublons: ${fillStats.duplicates}, Avec exactKey: ${fillStats.withExactKey}`);
+      console.log(`[FTF] Trades fermés (moteur): ${ftfEngine.closedTrades.length}`);
+      console.log(`[FTF] Trades affichés: ${state.realizedEvents.length}`);
+      console.log(`[FTF] Trades encore ouverts: ${ftfEngine.openTrades.size}`);
+      for (const [sym, trade] of ftfEngine.openTrades) {
+        console.log(`[FTF]   Position ouverte: ${sym} ${trade.side===1?'Buy':'Sell'} ${trade.totalQty}@${trade.avgEntry.toFixed(2)}`);
+      }
+      console.log(`[FTF] Fenêtre: FILTER_FROM_MS=${FILTER_FROM_MS ? new Date(FILTER_FROM_MS).toISOString() : 'null'}, FILTER_TO_MS=${FILTER_TO_MS ? new Date(FILTER_TO_MS).toISOString() : 'null'}`);
+      console.log(`[FTF] Fills dans le buffer: ${buffer.length}/${_fillsBuffer.length + buffer.length}`);
 
     } catch (error) {
       console.error('Erreur lors du traitement de l\'historique:', error);
