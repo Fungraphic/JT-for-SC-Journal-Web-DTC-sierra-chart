@@ -728,26 +728,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // === MOTEUR FLAT-TO-FLAT (méthode officielle Sierra Chart) ===
   // Un trade = un cycle complet : position 0 → non-nul → retour à 0
   // ┌──────────────────────────────────────────────────────────────────────────┐
-  // │ FlatToFlatEngine v3 — PositionQuantity-aware                            │
+  // │ FlatToFlatEngine v4 — OpenClose-aware (méthode Sierra Chart)              │
   // │                                                                        │
-  // │ Utilise le champ DTC PositionQuantity (position nette après le fill) │
-  // │ pour détecter les transitions flat-to-flat.                            │
+  // │ Utilise le champ DTC OpenClose (1=Opening, 2=Closing) pour détecter    │
+  // │ les transitions flat-to-flat. C'est la méthode recommandée par Sierra  │
+  // │ Chart car OpenClose est TOUJOURS fourni dans les fills 301/304.         │
   // │                                                                        │
   // │ Règles :                                                               │
-  // │  1. positionAfterFill === 0 → position flat, trade fermé               │
-  // │  2. Pas de trade ouvert + posAfterFill !== 0 → ouvrir un nouveau trade │
-  // │  3. Pas de trade ouvert + posAfterFill === 0 → fill hérité, ignorer    │
-  // │  4. Même direction → scale-in                                           │
-  // │  5. Direction opposée + posAfterFill !== 0 → scale-out partiel          │
-  // │  6. Trade fermé (totalQty=0) + posAfterFill !== 0 + remaining → reversal│
+  // │  1. OpenClose=1 (Opening) → scale-in ou nouveau trade                  │
+  // │  2. OpenClose=2 (Closing) → scale-out ou fermeture de trade            │
+  // │  3. Si OpenClose absent → fallback sur BuySell vs position ouverte      │
+  // │  4. PositionQuantity (si fourni) → vérité pour isFlat                  │
+  // │  5. Pas de PositionQuantity → cumul interne _netPos                     │
   // └──────────────────────────────────────────────────────────────────────────┘
 
   class FlatToFlatEngine {
     constructor() {
-      this.openTrades = new Map();
+      this.openTrades = new Map();  // symbol → {side, avgEntry, totalQty, openTime, totalCommission, scaleOuts}
       this.closedTrades = [];
-      // Suivi interne de position quand PositionQuantity n'est pas fourni
-      this._netPos = new Map(); // symbol → netQty (cumul side * qty)
+      this._netPos = new Map();      // symbol → netQty (cumul side * qty, pour fallback)
     }
 
     reset() {
@@ -756,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
       this._netPos.clear();
     }
 
-    applyFill(symbol, side, qty, price, timeMs, commission = 0, positionAfterFill = null) {
+    applyFill(symbol, side, qty, price, timeMs, commission = 0, positionAfterFill = null, openClose = null) {
       if (!symbol || !side || !qty || !Number.isFinite(price) || !Number.isFinite(timeMs)) {
         return { closedTrades: [], realizedPnl: 0 };
       }
@@ -764,47 +763,59 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = { closedTrades: [], realizedPnl: 0 };
       let remaining = qty;
 
+      // ── Déterminer isFlat ──
       // PositionQuantity : position nette APRÈS ce fill.
-      // - null/undefined = absent du serveur → on calcule en cumulatif interne
-      // - 0 = position plate CONNUE (le serveur le dit explicitement)
-      // - nombre ≠ 0 = position connue
+      // - null/undefined = absent → cumul interne
+      // - 0 = position plate CONNUE
       let isFlat;
       if (positionAfterFill !== null && positionAfterFill !== undefined) {
-        // Le serveur fournit PositionQuantity → on l'utilise comme vérité
         isFlat = positionAfterFill === 0;
         this._netPos.set(symbol, positionAfterFill);
       } else {
-        // PositionQuantity absent → cumul interne des fills
         const prev = this._netPos.get(symbol) || 0;
         this._netPos.set(symbol, prev + side * qty);
         isFlat = this._netPos.get(symbol) === 0;
       }
 
-      // ── Cas 1 : Pas de trade ouvert ──
-      if (!this.openTrades.has(symbol)) {
-        // Position flat → ce fill ferme un trade hérité qu'on ne connaît pas → ignorer
-        if (isFlat) {
-          return result;
+      // ── Déterminer si ce fill est une ouverture ou fermeture ──
+      // OpenClose du DTC Protocol : 1=Opening, 2=Closing
+      // Si absent, on déduit du side vs trade ouvert
+      let isOpeningFill;
+      if (openClose === 1) {
+        isOpeningFill = true;
+      } else if (openClose === 2) {
+        isOpeningFill = false;
+      } else {
+        // Fallback : si pas de trade ouvert, un fill est une ouverture
+        // Si trade ouvert, même direction = ouverture, direction opposée = fermeture
+        if (!this.openTrades.has(symbol)) {
+          isOpeningFill = true;
+        } else {
+          const trade = this.openTrades.get(symbol);
+          isOpeningFill = (trade.side === side);
         }
-        // Nouveau trade
-        this.openTrades.set(symbol, {
-          side, avgEntry: price, totalQty: remaining,
-          openTime: timeMs, totalCommission: commission, scaleOuts: []
-        });
-        return result;
       }
 
-      let trade = this.openTrades.get(symbol);
+      // ── Cas 1 : Ouverture (Opening / scale-in) ──
+      if (isOpeningFill) {
+        if (!this.openTrades.has(symbol)) {
+          // Nouveau trade
+          this.openTrades.set(symbol, {
+            side, avgEntry: price, totalQty: remaining,
+            openTime: timeMs, totalCommission: commission, scaleOuts: []
+          });
+        } else {
+          // Scale-in
+          const trade = this.openTrades.get(symbol);
+          const newTotalQty = trade.totalQty + remaining;
+          trade.avgEntry = (trade.avgEntry * trade.totalQty + price * remaining) / newTotalQty;
+          trade.totalQty = newTotalQty;
+          trade.totalCommission += commission;
+        }
 
-      // ── Cas 2 : Même direction (scale-in) ──
-      if (trade.side === side) {
-        const newTotalQty = trade.totalQty + remaining;
-        trade.avgEntry = (trade.avgEntry * trade.totalQty + price * remaining) / newTotalQty;
-        trade.totalQty = newTotalQty;
-        trade.totalCommission += commission;
-
-        // Position flat après un scale-in → fermer le trade
-        if (isFlat) {
+        // Position flat après ouverture → fermer (cas rare : reversal immédiat)
+        if (isFlat && this.openTrades.has(symbol)) {
+          const trade = this.openTrades.get(symbol);
           const totalPnl = (price - trade.avgEntry) * trade.side * trade.totalQty;
           const totalPnlCurrency = priceToCurrency(symbol, totalPnl);
           const closedTrade = {
@@ -820,7 +831,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
       }
 
-      // ── Cas 3 : Direction opposée (scale-out / reversal) ──
+      // ── Cas 2 : Fermeture (Closing / scale-out) ──
+      if (!this.openTrades.has(symbol)) {
+        // Pas de trade ouvert → ce fill ferme un trade hérité qu'on ne connaît pas
+        // Si position flat → ignorer (c'était une clôture d'un trade d'avant la fenêtre)
+        if (isFlat) {
+          return result;
+        }
+        // Sinon, on doit créer un trade hérité avec le prix du snapshot 305/306
+        // Mais sans snapshot, on ne peut pas. On ignore ce fill.
+        // Le trade hérité sera créé par ensureSeedForClose en amont.
+        return result;
+      }
+
+      let trade = this.openTrades.get(symbol);
+
+      // Scale-out / reversal
       while (remaining > 0 && trade && trade.totalQty > 0) {
         const closedQty = Math.min(remaining, trade.totalQty);
         const pnlPoints = (price - trade.avgEntry) * trade.side * closedQty;
@@ -1593,7 +1619,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Traite un "fill" (live 301 ou historique 304) avec dédup tolérante
 	// exactKey permet d'utiliser un ID d'exécution serveur si disponible (idéal)
 	// positionAfterFill : position nette APRÈS ce fill (champ DTC PositionQuantity), ou null
-	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown', positionAfterFill = null) {
+	// openClose : champ DTC OpenClose (1=Opening, 2=Closing), ou null
+	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown', positionAfterFill = null, openClose = null) {
 		// Validation basique — rejeter les fills avec prix <= 0 ou qty <= 0
 		if (!symbol || !qty || qty <= 0 || !Number.isFinite(price) || price <= 0 || !Number.isFinite(ts) || ts <= 0) { console.warn('[FILL] Ignoré — données invalides', {symbol, side, qty, price, ts}); return; }
 
@@ -1639,11 +1666,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		// Moteur Flat-to-Flat : traite le fill et retourne les trades fermés
 		const priceN = normalizePrice(symbol, price);
-		const ftfResult = ftfEngine.applyFill(symbol, side, qty, priceN, ts, commission, positionAfterFill);
+		const ftfResult = ftfEngine.applyFill(symbol, side, qty, priceN, ts, commission, positionAfterFill, openClose);
 		const trades = ftfResult.closedTrades || [];
 
-		if (positionAfterFill !== null && positionAfterFill !== undefined) {
-			console.log(`[FTF] Fill: ${symbol} ${side===1?'Buy':'Sell'} ${qty}@${priceN.toFixed(2)} posAfter=${positionAfterFill} → ${trades.length} trade(s) fermé(s), openTrades: ${ftfEngine.openTrades.size}`);
+		if (positionAfterFill !== null && positionAfterFill !== undefined || openClose !== null) {
+			console.log(`[FTF] Fill: ${symbol} ${side===1?'Buy':'Sell'} ${qty}@${priceN.toFixed(2)} OC=${openClose ?? '?'} posAfter=${positionAfterFill ?? '?'} → ${trades.length} trade(s), openTrades: ${ftfEngine.openTrades.size}`);
 		}
 
 		// Traiter les trades fermés par le moteur Flat-to-Flat
@@ -2257,9 +2284,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				const execId = safeString(msg.LastFillExecutionID ?? '');
 				const exactKey = execId ? `X|${execId}` : null;
 
-				// PositionQuantity : position nette APRÈS ce fill (DTC Protocol)
+			// PositionQuantity : position nette APRÈS ce fill (DTC Protocol)
 				const posQtyRaw = msg.PositionQuantity;
-			const posQty = (posQtyRaw !== undefined && posQtyRaw !== null && posQtyRaw !== '') ? safeNumber(posQtyRaw) : null;
+				const posQty = (posQtyRaw !== undefined && posQtyRaw !== null && posQtyRaw !== '') ? safeNumber(posQtyRaw) : null;
+
+				// OpenClose du DTC Protocol : 1=Opening, 2=Closing
+				const openClose = (msg.OpenClose !== undefined && msg.OpenClose !== null && msg.OpenClose !== '') ? safeNumber(msg.OpenClose) : null;
 
 				if (isLoadingHistory) {
 					// 🔧 CORRECTION : Vérifier si ce fill n'est pas déjà dans le tampon
@@ -2272,7 +2302,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					);
 				if (!isDuplicate) {
 					fillStats.buffered++;
-					pendingLiveFills.push({ symbol: msg.Symbol, side, qty, price, ts, comm, exactKey, posQty });
+					pendingLiveFills.push({ symbol: msg.Symbol, side, qty, price, ts, comm, exactKey, posQty, openClose });
 					console.log(`[BUFFER] Fill tamponné pendant chargement historique - Symbol: ${msg.Symbol}, ExactKey: ${exactKey ? 'OUI' : 'NON'}`);
 					} else {
 						fillStats.duplicates++;
@@ -2281,7 +2311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					return;
 				}
 
-				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey, 'live', posQty);
+				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey, 'live', posQty, openClose);
 				} catch (e) { console.error('[DTC] Erreur handler Type 301 (ORDER_UPDATE):', e); }
 				return;
 			}
@@ -2313,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`[BUFFER] Traitement de ${pendingLiveFills.length} fills tamponnés`);
             for (const f of pendingLiveFills) {
               // 🔧 CORRECTION : Passer l'exactKey et posQty lors du traitement du tampon
-              applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm, f.exactKey, 'buffered', f.posQty ?? null);
+              applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm, f.exactKey, 'buffered', f.posQty ?? null, f.openClose ?? null);
             }
             pendingLiveFills.length = 0;
           }
@@ -2383,9 +2413,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const posQtyRaw = f.PositionQuantity;
         const posQty = (posQtyRaw !== undefined && posQtyRaw !== null && posQtyRaw !== '') ? safeNumber(posQtyRaw) : null;
 
+        // OpenClose du DTC Protocol : 1=Opening, 2=Closing
+        // Utilisé par le moteur Flat-to-Flat v4 pour détecter les changements de direction.
+        const openClose = (f.OpenClose !== undefined && f.OpenClose !== null && f.OpenClose !== '') ? safeNumber(f.OpenClose) : null;
+
         // Utilise la même pipeline que le live (dédup incluse)
         const beforeEvents = state.realizedEvents.length;
-        applyFill(symbol, side, qty, price, ts, comm, exactKey, 'historical', posQty);
+        applyFill(symbol, side, qty, price, ts, comm, exactKey, 'historical', posQty, openClose);
         const newEvents = state.realizedEvents.slice(beforeEvents);
         tradesCount += newEvents.filter(ev => ev && ev.symbol).length;
 
