@@ -15,7 +15,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 class Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {'.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript'}
 
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
+with socketserver.ThreadingTCPServer(("", PORT), Handler) as httpd:
     print(f"JT for SC — Journal Web DTC")
     print(f"Ouvrir: http://localhost:{PORT}")
     print(f"Ctrl+C pour arrêter")

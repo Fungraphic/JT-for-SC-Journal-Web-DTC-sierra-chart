@@ -14,7 +14,7 @@
 	  frame-src  https://fxverify.com https://*.fxverify.com;
 	">	 
   
-  <title>JT for SC — Journal Web DTC - Version 1.28</title>
+  <title>JT for SC — Journal Web DTC - Version 1.30</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/main.css">
@@ -764,14 +764,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = { closedTrades: [], realizedPnl: 0 };
       let remaining = qty;
 
-      // Si PositionQuantity n'est PAS fourni, on calcule la position nette cumulée
+      // PositionQuantity : position nette APRÈS ce fill.
+      // - null/undefined = absent du serveur → on calcule en cumulatif interne
+      // - 0 = position plate CONNUE (le serveur le dit explicitement)
+      // - nombre ≠ 0 = position connue
       let isFlat;
       if (positionAfterFill !== null && positionAfterFill !== undefined) {
+        // Le serveur fournit PositionQuantity → on l'utilise comme vérité
         isFlat = positionAfterFill === 0;
-        // Maintenir _netPos synchronisé — PositionQuantity est la position nette signée
         this._netPos.set(symbol, positionAfterFill);
       } else {
-        // Calcul interne : cumul des fills par symbole
+        // PositionQuantity absent → cumul interne des fills
         const prev = this._netPos.get(symbol) || 0;
         this._netPos.set(symbol, prev + side * qty);
         isFlat = this._netPos.get(symbol) === 0;
@@ -1591,8 +1594,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	// exactKey permet d'utiliser un ID d'exécution serveur si disponible (idéal)
 	// positionAfterFill : position nette APRÈS ce fill (champ DTC PositionQuantity), ou null
 	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown', positionAfterFill = null) {
-		// Validation basique
-		if (!symbol || !qty || !Number.isFinite(price) || !Number.isFinite(ts)) { console.warn('[FILL] Ignoré — données invalides', {symbol, side, qty, price, ts}); return; }
+		// Validation basique — rejeter les fills avec prix <= 0 ou qty <= 0
+		if (!symbol || !qty || qty <= 0 || !Number.isFinite(price) || price <= 0 || !Number.isFinite(ts) || ts <= 0) { console.warn('[FILL] Ignoré — données invalides', {symbol, side, qty, price, ts}); return; }
 
 		const key = exactKey || approxFillKey(symbol, side, qty, price, ts);
 
@@ -1828,7 +1831,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		// Snapshot courant des positions : sert d'indice pour savoir s'il s'agit d'une fermeture
 		const pos = getOpenPosForSymbol(symbol);
-		if (!pos) return; // pas d'info exploitable → on ne sème pas (évite faux positifs)
+		if (!pos) {
+			// Pas de snapshot position (305/306 pas encore reçu ou compte sans positions)
+			// → on ne peut pas seed, mais on log pour le debug
+			return;
+		}
 
 		// Si le signe de la position est opposé au side du fill => c'est une FERMETURE
 		// (ex: position long >0, fill SELL => incomingSide=-1 → pos.qty * incomingSide < 0)
@@ -1994,8 +2001,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     client = new DTCClient(url);
 
+    // Timeout de connexion : 15 secondes
+    const connectTimeout = setTimeout(() => {
+      if (_connecting) {
+        _connecting = false;
+        setStatus(false, 'Timeout connexion', true);
+        qs('#statusPill').textContent = 'Timeout (15s)';
+        setButtonLoading(connectBtn, false);
+        showStatusMessage('Délai de connexion dépassé (15s). Vérifiez l\'URL et que Sierra Chart est en cours d\'exécution.', 'error', 8000);
+        if (client) { client.close(); client = null; }
+        scheduleReconnect();
+      }
+    }, 15000);
+
     client.onOpen = () => {
       _connecting = false;
+      clearTimeout(connectTimeout);
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';
       state.connected = true;
@@ -2016,6 +2037,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     client.onClose = () => {
       _connecting = false;
+      clearTimeout(connectTimeout);
+      isLoadingHistory = false;
+      currentHistoryReqId = null;
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';					
       stopKpiPolling();
@@ -2032,6 +2056,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     client.onError = (e) => {
       _connecting = false;
+      clearTimeout(connectTimeout);
+      isLoadingHistory = false;
+      currentHistoryReqId = null;
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';			
       stopKpiPolling();
@@ -2302,11 +2329,18 @@ document.addEventListener('DOMContentLoaded', () => {
 					setRefreshIndicator('active');
 				}
 
-        // Bufferiser puis traiter quand total reçu
+        // Bufferiser puis traiter quand le stream est complet
         _fillsBuffer.push(msg);
         const total = msg.TotalNumberMessagesForRequest ?? msg.TotalNumberMessages;
         const num   = msg.MessageNumberForRequest ?? msg.MessageNumber;
+        // Cas 1 : stream multi-messages avec numérotation → traiter au dernier
         if (total && num && num === total) { processHistoricalFills(); }
+        // Cas 2 : message unique sans numérotation (certains serveurs n'envoient pas TotalNumberMessages)
+        // Si on reçoit un seul fill sans info de numérotation, on le traite directement.
+        else if (!total && !num && _fillsBuffer.length === 1) {
+          // Vérifier que c'est bien un fill unique (pas un message de fin)
+          if (msg.NoOrderFills !== 1) { processHistoricalFills(); }
+        }
         } catch (e) { console.error('[DTC] Erreur handler Type 304 (HISTORICAL_ORDER_FILL_RESPONSE):', e); }
         return;
       }
