@@ -2234,7 +2234,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (msg.Type === 304) {
         try {
         // Filtrer par requête si on en a une en cours
-        if (currentHistoryReqId !== null && msg.RequestID !== undefined && msg.RequestID !== currentHistoryReqId) return;
+        if (currentHistoryReqId !== null && msg.RequestID !== undefined && msg.RequestID !== currentHistoryReqId) {
+          console.warn('[304] Rejeté — RequestID ne correspond pas', {msgReqId: msg.RequestID, current: currentHistoryReqId});
+          return;
+        }
 
         // Fin de stream ?
         if (msg.NoOrderFills === 1) {
