@@ -2288,7 +2288,6 @@ document.addEventListener('DOMContentLoaded', () => {
               // 🔧 CORRECTION : Passer l'exactKey et posQty lors du traitement du tampon
               applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm, f.exactKey, 'buffered', f.posQty ?? null);
             }
-            }
             pendingLiveFills.length = 0;
           }
           setRefreshIndicator('done');
