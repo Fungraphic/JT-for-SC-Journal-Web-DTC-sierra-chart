@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.29.0] - 2025-05-08
+
+### Changed
+- **Moteur d'agrégation Flat-to-Flat** : remplacement complet du système FIFO par lots par le moteur `FlatToFlatEngine` (méthode officielle Sierra Chart)
+  - Un trade = un cycle complet (position 0 → non-nul → retour à 0)
+  - Scale-in (rajout de contrats) : avgEntry dynamique pondéré
+  - Scale-out (TP partiel) : PnL accumulé sur chaque fermeture partielle, trade finalisé à plat
+  - Reversal (inversion) : fermeture du trade actuel + ouverture d'un nouveau dans le sens opposé
+  - Commissions réparties proportionnellement sur chaque portion fermée
+  - `ensureSeedForClose` adapté : injecte un trade hérité avec la quantité complète du snapshot serveur
+
+### Fixed
+- Bug fix : PnL du trade fermé calculé via somme des `scaleOuts[].pnl` (au lieu d'un `cumulPnl` remis à 0 à chaque appel)
+- Bug fix : `ensureSeedForClose` utilise `Math.abs(pos.qty)` au lieu de `incomingQty` pour le trade hérité
+- Connexion DTC : timeout 15s, flag `_timedOut`, nettoyage heartbeat dans onClose/onError
+- SRI/crossorigin retiré (cassait le chargement en `file://`)
+
 ## [1.28.1] - 2025-05-08
 
 ### Added
