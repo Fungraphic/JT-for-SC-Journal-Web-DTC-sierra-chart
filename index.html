@@ -47,7 +47,7 @@
       <div class="controls">
         <div class="group">
           <label for="dtcUrl">DTC WebSocket URL</label>
-          <input id="dtcUrl" placeholder="ws://127.0.0.1:11099" value="ws://192.168.1.53:11099" />
+          <input id="dtcUrl" placeholder="ws://127.0.0.1:11099" value="ws://127.0.0.1:11099" />
         </div>
         <div class="group">
           <label for="tradeAccount">Trade Account (optionnel)</label>
@@ -766,9 +766,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function stopKpiPolling() { if (kpiRefreshTimer) { clearInterval(kpiRefreshTimer); kpiRefreshTimer = null; } }
 
   // === RECONNEXION
-  const MAX_RECONNECT_ATTEMPTS = 20;
+  const MAX_RECONNECT_ATTEMPTS = 10;
+  let _connecting = false;  // guard contre les reconnexions récursives
   function scheduleReconnect() {
-    if (manualDisconnect || reconnectTimer) return;
+    if (manualDisconnect || reconnectTimer || _connecting) return;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       showStatusMessage('Impossible de se reconnecter après ' + MAX_RECONNECT_ATTEMPTS + ' tentatives. Veuillez rafraîchir la page.', 'error', 0);
       qs('#statusPill').textContent = 'Reconnexion impossible';
@@ -1902,6 +1903,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (accountPreference) localStorage.setItem('tradeAccount', accountPreference);
 
     manualDisconnect = false;
+    _connecting = true;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     reconnectAttempts = 0;
 
@@ -1913,6 +1915,7 @@ document.addEventListener('DOMContentLoaded', () => {
     client = new DTCClient(url);
 
     client.onOpen = () => {
+      _connecting = false;
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';
       state.connected = true;
@@ -1932,6 +1935,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     };
     client.onClose = () => {
+      _connecting = false;
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';					
       stopKpiPolling();
@@ -1947,6 +1951,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
     client.onError = (e) => {
+      _connecting = false;
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';			
       stopKpiPolling();
