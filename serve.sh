@@ -12,7 +12,7 @@ import os
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-class Handler(http.SimpleHTTPRequestHandler):
+class Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {'.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript'}
 
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
