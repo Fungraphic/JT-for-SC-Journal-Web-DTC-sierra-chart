@@ -639,8 +639,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     }
     _emitJson(str) {
-      try { this.onMessage(JSON.parse(str)); }
-      catch (e) { console.warn('JSON parse error', e, str); }
+      try {
+        const msg = JSON.parse(str);
+        console.log('[DTC][_emitJson] Type:', msg.Type, 'len:', str.length);
+        this.onMessage(msg);
+      } catch (e) { console.warn('JSON parse error', e, str); }
     }
   }
 
@@ -766,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function stopKpiPolling() { if (kpiRefreshTimer) { clearInterval(kpiRefreshTimer); kpiRefreshTimer = null; } }
 
   // === RECONNEXION
-  const MAX_RECONNECT_ATTEMPTS = 10;
+  const MAX_RECONNECT_ATTEMPTS = 20;
   function scheduleReconnect() {
     if (manualDisconnect || reconnectTimer) return;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
