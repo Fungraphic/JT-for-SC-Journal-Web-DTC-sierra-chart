@@ -746,11 +746,14 @@ document.addEventListener('DOMContentLoaded', () => {
     constructor() {
       this.openTrades = new Map();
       this.closedTrades = [];
+      // Suivi interne de position quand PositionQuantity n'est pas fourni
+      this._netPos = new Map(); // symbol → netQty (cumul side * qty)
     }
 
     reset() {
       this.openTrades.clear();
       this.closedTrades = [];
+      this._netPos.clear();
     }
 
     applyFill(symbol, side, qty, price, timeMs, commission = 0, positionAfterFill = null) {
@@ -760,7 +763,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const result = { closedTrades: [], realizedPnl: 0 };
       let remaining = qty;
-      const isFlat = positionAfterFill === 0;
+
+      // Si PositionQuantity n'est PAS fourni, on calcule la position nette cumulée
+      let isFlat;
+      if (positionAfterFill !== null && positionAfterFill !== undefined) {
+        isFlat = positionAfterFill === 0;
+        // Maintenir _netPos synchronisé — PositionQuantity est la position nette signée
+        this._netPos.set(symbol, positionAfterFill);
+      } else {
+        // Calcul interne : cumul des fills par symbole
+        const prev = this._netPos.get(symbol) || 0;
+        this._netPos.set(symbol, prev + side * qty);
+        isFlat = this._netPos.get(symbol) === 0;
+      }
 
       // ── Cas 1 : Pas de trade ouvert ──
       if (!this.openTrades.has(symbol)) {
@@ -2216,7 +2231,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				const exactKey = execId ? `X|${execId}` : null;
 
 				// PositionQuantity : position nette APRÈS ce fill (DTC Protocol)
-				const posQty = safeNumber(msg.PositionQuantity);
+				const posQtyRaw = msg.PositionQuantity;
+			const posQty = (posQtyRaw !== undefined && posQtyRaw !== null && posQtyRaw !== '') ? safeNumber(posQtyRaw) : null;
 
 				if (isLoadingHistory) {
 					// 🔧 CORRECTION : Vérifier si ce fill n'est pas déjà dans le tampon
@@ -2331,7 +2347,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // PositionQuantity : position nette APRÈS ce fill (fourni par Sierra Chart dans les Type 301/304)
         // Utilisé par le moteur Flat-to-Flat pour détecter les transitions flat-to-flat.
-        const posQty = safeNumber(f.PositionQuantity);
+        const posQtyRaw = f.PositionQuantity;
+        const posQty = (posQtyRaw !== undefined && posQtyRaw !== null && posQtyRaw !== '') ? safeNumber(posQtyRaw) : null;
 
         // Utilise la même pipeline que le live (dédup incluse)
         const beforeEvents = state.realizedEvents.length;
