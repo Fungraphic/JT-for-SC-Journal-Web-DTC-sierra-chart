@@ -727,15 +727,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === MOTEUR FLAT-TO-FLAT (méthode officielle Sierra Chart) ===
   // Un trade = un cycle complet : position 0 → non-nul → retour à 0
-  // Scale-in : avgEntry se met à jour dynamiquement
-  // Scale-out : PnL réalisé immédiat pour la quantité fermée
-  // Reversal : le trade se ferme + nouveau trade s'ouvre dans l'autre sens
+  // ┌──────────────────────────────────────────────────────────────────────────┐
+  // │ FlatToFlatEngine v3 — PositionQuantity-aware                            │
+  // │                                                                        │
+  // │ Utilise le champ DTC PositionQuantity (position nette après le fill) │
+  // │ pour détecter les transitions flat-to-flat.                            │
+  // │                                                                        │
+  // │ Règles :                                                               │
+  // │  1. positionAfterFill === 0 → position flat, trade fermé               │
+  // │  2. Pas de trade ouvert + posAfterFill !== 0 → ouvrir un nouveau trade │
+  // │  3. Pas de trade ouvert + posAfterFill === 0 → fill hérité, ignorer    │
+  // │  4. Même direction → scale-in                                           │
+  // │  5. Direction opposée + posAfterFill !== 0 → scale-out partiel          │
+  // │  6. Trade fermé (totalQty=0) + posAfterFill !== 0 + remaining → reversal│
+  // └──────────────────────────────────────────────────────────────────────────┘
 
   class FlatToFlatEngine {
     constructor() {
-      // Par symbole : {side, avgEntry, totalQty, openTime, totalCommission, scaleOuts}
       this.openTrades = new Map();
-      // Trades fermés (pour debug/audit)
       this.closedTrades = [];
     }
 
@@ -744,67 +753,70 @@ document.addEventListener('DOMContentLoaded', () => {
       this.closedTrades = [];
     }
 
-    // Retourne { closedTrades: [], realizedPnl: 0 }
-    applyFill(symbol, side, qty, price, timeMs, commission = 0) {
+    applyFill(symbol, side, qty, price, timeMs, commission = 0, positionAfterFill = null) {
       if (!symbol || !side || !qty || !Number.isFinite(price) || !Number.isFinite(timeMs)) {
         return { closedTrades: [], realizedPnl: 0 };
       }
 
       const result = { closedTrades: [], realizedPnl: 0 };
       let remaining = qty;
+      const isFlat = positionAfterFill === 0;
 
-      // Cas 1 : Pas de trade ouvert pour ce symbole → ouvrir un nouveau trade
+      // ── Cas 1 : Pas de trade ouvert ──
       if (!this.openTrades.has(symbol)) {
+        // Position flat → ce fill ferme un trade hérité qu'on ne connaît pas → ignorer
+        if (isFlat) {
+          return result;
+        }
+        // Nouveau trade
         this.openTrades.set(symbol, {
-          side,
-          avgEntry: price,
-          totalQty: remaining,
-          openTime: timeMs,
-          totalCommission: commission,
-          scaleOuts: []
+          side, avgEntry: price, totalQty: remaining,
+          openTime: timeMs, totalCommission: commission, scaleOuts: []
         });
         return result;
       }
 
       let trade = this.openTrades.get(symbol);
 
-      // Cas 2 : Même direction (scale-in) → mise à jour du prix moyen
+      // ── Cas 2 : Même direction (scale-in) ──
       if (trade.side === side) {
         const newTotalQty = trade.totalQty + remaining;
         trade.avgEntry = (trade.avgEntry * trade.totalQty + price * remaining) / newTotalQty;
         trade.totalQty = newTotalQty;
         trade.totalCommission += commission;
+
+        // Position flat après un scale-in → fermer le trade
+        if (isFlat) {
+          const totalPnl = (price - trade.avgEntry) * trade.side * trade.totalQty;
+          const totalPnlCurrency = priceToCurrency(symbol, totalPnl);
+          const closedTrade = {
+            symbol, side: trade.side, qty: trade.totalQty,
+            openTime: trade.openTime, closeTime: timeMs,
+            entry: trade.avgEntry, exit: price,
+            pnl: totalPnlCurrency - commission, synthetic: false
+          };
+          result.closedTrades.push(closedTrade);
+          this.closedTrades.push(closedTrade);
+          this.openTrades.delete(symbol);
+        }
         return result;
       }
 
-      // Cas 3 : Direction opposée (scale-out ou reversal)
-      // Fermer la quantité possible avec le trade ouvert
-      // Les scale-outs accumulent le PnL net de chaque fermeture partielle.
-      // À la fermeture complète, le PnL du trade = somme des scaleOuts[].pnl.
-
+      // ── Cas 3 : Direction opposée (scale-out / reversal) ──
       while (remaining > 0 && trade && trade.totalQty > 0) {
         const closedQty = Math.min(remaining, trade.totalQty);
         const pnlPoints = (price - trade.avgEntry) * trade.side * closedQty;
         const pnlCurrency = priceToCurrency(symbol, pnlPoints);
-
-        // Commission proportionnelle pour cette portion du fill
         const commissionPortion = (closedQty / qty) * commission;
         const netPnl = pnlCurrency - commissionPortion;
 
         trade.totalQty -= closedQty;
         remaining -= closedQty;
 
-        // Enregistrer le scale-out partiel avec PnL net (commission déduite)
-        trade.scaleOuts.push({
-          qty: closedQty,
-          price,
-          timeMs,
-          pnl: netPnl
-        });
+        trade.scaleOuts.push({ qty: closedQty, price, timeMs, pnl: netPnl });
 
-        // Si la position est complètement fermée → finaliser le trade
+        // Trade complètement fermé
         if (trade.totalQty <= 0) {
-          // Trade complet : agréger tous les scale-outs
           const totalQty = trade.scaleOuts.reduce((s, so) => s + so.qty, 0);
           const avgExit = totalQty > 0
             ? trade.scaleOuts.reduce((s, so) => s + so.price * so.qty, 0) / totalQty
@@ -815,32 +827,25 @@ document.addEventListener('DOMContentLoaded', () => {
             : timeMs;
 
           const closedTrade = {
-            symbol,
-            side: trade.side,
-            qty: totalQty,
-            openTime: trade.openTime,
-            closeTime,
-            entry: trade.avgEntry,
-            exit: avgExit,
-            pnl: totalPnl,  // Somme des PnL nets de tous les scale-outs
-            synthetic: false
+            symbol, side: trade.side, qty: totalQty,
+            openTime: trade.openTime, closeTime,
+            entry: trade.avgEntry, exit: avgExit,
+            pnl: totalPnl, synthetic: false
           };
           result.closedTrades.push(closedTrade);
           this.closedTrades.push(closedTrade);
-
-          // Retirer le trade fermé
           this.openTrades.delete(symbol);
           trade = null;
 
-          // Cas 4 : Reversal — remaining > 0 → ouvrir un nouveau trade dans l'autre sens
-          if (remaining > 0) {
-            const reversalSide = side;
+          // Position flat → pas de reversal
+          if (isFlat) {
+            remaining = 0;
+          }
+          // Reversal — remaining > 0, positionAfterFill !== 0
+          else if (remaining > 0) {
             this.openTrades.set(symbol, {
-              side: reversalSide,
-              avgEntry: price,
-              totalQty: remaining,
-              openTime: timeMs,
-              totalCommission: commission * (remaining / qty),
+              side, avgEntry: price, totalQty: remaining,
+              openTime: timeMs, totalCommission: commission * (remaining / qty),
               scaleOuts: []
             });
             remaining = 0;
@@ -1569,7 +1574,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// Traite un "fill" (live 301 ou historique 304) avec dédup tolérante
 	// exactKey permet d'utiliser un ID d'exécution serveur si disponible (idéal)
-	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown') {
+	// positionAfterFill : position nette APRÈS ce fill (champ DTC PositionQuantity), ou null
+	function applyFill(symbol, side, qty, price, ts, commission = 0, exactKey = null, source = 'unknown', positionAfterFill = null) {
 		// Validation basique
 		if (!symbol || !qty || !Number.isFinite(price) || !Number.isFinite(ts)) { console.warn('[FILL] Ignoré — données invalides', {symbol, side, qty, price, ts}); return; }
 
@@ -1615,8 +1621,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		// Moteur Flat-to-Flat : traite le fill et retourne les trades fermés
 		const priceN = normalizePrice(symbol, price);
-		const ftfResult = ftfEngine.applyFill(symbol, side, qty, priceN, ts, commission);
+		const ftfResult = ftfEngine.applyFill(symbol, side, qty, priceN, ts, commission, positionAfterFill);
 		const trades = ftfResult.closedTrades || [];
+
+		if (positionAfterFill !== null && positionAfterFill !== undefined) {
+			console.log(`[FTF] Fill: ${symbol} ${side===1?'Buy':'Sell'} ${qty}@${priceN.toFixed(2)} posAfter=${positionAfterFill} → ${trades.length} trade(s) fermé(s), openTrades: ${ftfEngine.openTrades.size}`);
+		}
 
 		// Traiter les trades fermés par le moteur Flat-to-Flat
 		for (const t of trades) {
@@ -2205,6 +2215,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				const execId = safeString(msg.LastFillExecutionID ?? '');
 				const exactKey = execId ? `X|${execId}` : null;
 
+				// PositionQuantity : position nette APRÈS ce fill (DTC Protocol)
+				const posQty = safeNumber(msg.PositionQuantity);
+
 				if (isLoadingHistory) {
 					// 🔧 CORRECTION : Vérifier si ce fill n'est pas déjà dans le tampon
 					const isDuplicate = pendingLiveFills.some(f =>
@@ -2214,10 +2227,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						Math.abs(f.ts - ts) < 1000 && // Même seconde
 						(f.exactKey === exactKey || (!f.exactKey && !exactKey))
 					);
-					if (!isDuplicate) {
-						fillStats.buffered++;
-						pendingLiveFills.push({ symbol: msg.Symbol, side, qty, price, ts, comm, exactKey });
-						console.log(`[BUFFER] Fill tamponné pendant chargement historique - Symbol: ${msg.Symbol}, ExactKey: ${exactKey ? 'OUI' : 'NON'}`);
+				if (!isDuplicate) {
+					fillStats.buffered++;
+					pendingLiveFills.push({ symbol: msg.Symbol, side, qty, price, ts, comm, exactKey, posQty });
+					console.log(`[BUFFER] Fill tamponné pendant chargement historique - Symbol: ${msg.Symbol}, ExactKey: ${exactKey ? 'OUI' : 'NON'}`);
 					} else {
 						fillStats.duplicates++;
 						console.warn(`[BUFFER] Fill doublon ignoré dans le tampon - Symbol: ${msg.Symbol}`);
@@ -2225,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					return;
 				}
 
-				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey, 'live');
+				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey, 'live', posQty);
 				} catch (e) { console.error('[DTC] Erreur handler Type 301 (ORDER_UPDATE):', e); }
 				return;
 			}
@@ -2256,8 +2269,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (pendingLiveFills.length) {
             console.log(`[BUFFER] Traitement de ${pendingLiveFills.length} fills tamponnés`);
             for (const f of pendingLiveFills) {
-              // 🔧 CORRECTION : Passer l'exactKey lors du traitement du tampon
-              applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm, f.exactKey, 'buffered');
+              // 🔧 CORRECTION : Passer l'exactKey et posQty lors du traitement du tampon
+              applyFill(f.symbol, f.side, f.qty, f.price, f.ts, f.comm, f.exactKey, 'buffered', f.posQty ?? null);
+            }
             }
             pendingLiveFills.length = 0;
           }
@@ -2315,9 +2329,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const execId = safeString(f.UniqueExecutionID ?? '');
         const exactKey = execId ? `X|${execId}` : null;
 
+        // PositionQuantity : position nette APRÈS ce fill (fourni par Sierra Chart dans les Type 301/304)
+        // Utilisé par le moteur Flat-to-Flat pour détecter les transitions flat-to-flat.
+        const posQty = safeNumber(f.PositionQuantity);
+
         // Utilise la même pipeline que le live (dédup incluse)
         const beforeEvents = state.realizedEvents.length;
-        applyFill(symbol, side, qty, price, ts, comm, exactKey, 'historical');
+        applyFill(symbol, side, qty, price, ts, comm, exactKey, 'historical', posQty);
         const newEvents = state.realizedEvents.slice(beforeEvents);
         tradesCount += newEvents.filter(ev => ev && ev.symbol).length;
 
