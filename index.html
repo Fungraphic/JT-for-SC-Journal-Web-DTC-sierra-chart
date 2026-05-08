@@ -596,8 +596,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const clean = sanitizeChunk(chunk);
       this._rxBuffer += clean;
       if (this._rxBuffer.length > 1048576) {
-        console.error('[DTC] _rxBuffer overflow, troncation à 1MB');
-        this._rxBuffer = this._rxBuffer.slice(-524288);
+        this._rxBuffer = '';
+        this.onError(new Error('RX buffer overflow'));
+        return;
       }
       let made = true;
       while (made) {
@@ -1992,14 +1993,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === GESTION DES MESSAGES DTC (avec Patch B & C)
   function handleDTCMessage(msg) {
-    try {
-      // Guard : message doit être un objet non null avec un Type valide
-      if (!msg || typeof msg !== 'object' || typeof msg.Type === 'undefined') {
-        console.warn('[DTC] Message mal formé ignoré :', msg);
-        return;
-      }
-      // 2 = LOGON_RESPONSE → démarrer heartbeat + demander la liste des comptes
-      if (msg.Type === 2) {
+    // Guard : message doit être un objet non null avec un Type valide
+    if (!msg || typeof msg !== 'object' || typeof msg.Type === 'undefined') {
+      console.warn('[DTC] Message mal formé ignoré :', msg);
+      return;
+    }
+
+    // 2 = LOGON_RESPONSE → démarrer heartbeat + demander la liste des comptes
+    if (msg.Type === 2) {
+      try {
         resetTradesView();
         accounts.clear();
         populateAccountSelect();
@@ -2009,21 +2011,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Démarrer le heartbeat uniquement après LOGON_RESPONSE
         if (client) client.startHeartbeat();
         client.send({Type: 400, RequestID: 1}); // ACCOUNTS_LIST_REQUEST
-        return;
-      }
+      } catch (e) { console.error('[DTC] Erreur handler Type 2 (LOGON_RESPONSE):', e); }
+      return;
+    }
 
-      // 401 = ACCOUNTS_LIST_RESPONSE (stream)
-      if (msg.Type === 401) {
+    // 401 = ACCOUNTS_LIST_RESPONSE (stream)
+    if (msg.Type === 401) {
+      try {
         if (msg.TradeAccount && typeof msg.TradeAccount === 'string' && msg.TradeAccount.trim()) {
           accounts.add(String(msg.TradeAccount).trim());
           populateAccountSelect();
           trySelectPreferredAccount();
         }
-        return;
-      }
+      } catch (e) { console.error('[DTC] Erreur handler Type 401 (ACCOUNTS_LIST_RESPONSE):', e); }
+      return;
+    }
 
-      // 600/603 = Account balance & PnL (KPI)
-      if ((msg.Type === 600 || msg.Type === 603) && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+    // 600/603 = Account balance & PnL (KPI)
+    if ((msg.Type === 600 || msg.Type === 603) && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+      try {
         const cash  = (msg.CashBalance ?? msg.Balance ?? null);
         const avail = (msg.BalanceAvailableForNewPositions ?? msg.AvailableFunds ?? null);
         const daily = (msg.DailyProfitLoss ?? null);
@@ -2046,79 +2052,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateCapitalDonut();
         updateAdvancedPanel();
-        return;
-      }
+      } catch (e) { console.error('[DTC] Erreur handler Type 600/603 (KPI):', e); }
+      return;
+    }
 
-	// 305 = POSITION_SNAPSHOT (IsSnapshot=1) → même traitement que 306 mais efface d'abord
-	if (msg.Type === 305 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
-		if (msg.IsSnapshot === 1 || msg.IsSnapshot === '1') {
-			openPositionsNow.clear();
-			state.perSymbolPos.clear();
-		}
-		if (msg.NoPositions === 1) {
-			openPositionsNow.clear();
-			state.perSymbolPos.clear();
-			return;
-		}
-		const sym = safeString(msg.Symbol);
-		if (!sym) return;
-		const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
-		const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
-		const avgNorm = normalizePrice(sym, avgRaw);
-		const posId   = safeString(msg.PositionIdentifier ?? '') || null;
-		const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
-		openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
-		let netQty = 0, wSum = 0, qSum = 0;
-		for (const [k, p] of openPositionsNow) {
-			if ((k.split('|')[0]) === sym) {
-				netQty += p.qty;
-				const w = Math.abs(p.qty);
-				if (w > 0) { wSum += p.avg * w; qSum += w; }
-			}
-		}
-		const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
-		state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
-		return;
-	}
+    // 305 = POSITION_SNAPSHOT (IsSnapshot=1) → même traitement que 306 mais efface d'abord
+    if (msg.Type === 305 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+      try {
+        if (msg.IsSnapshot === 1 || msg.IsSnapshot === '1') {
+          openPositionsNow.clear();
+          state.perSymbolPos.clear();
+        }
+        if (msg.NoPositions === 1) {
+          openPositionsNow.clear();
+          state.perSymbolPos.clear();
+          return;
+        }
+        const sym = safeString(msg.Symbol);
+        if (!sym) return;
+        const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
+        const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
+        const avgNorm = normalizePrice(sym, avgRaw);
+        const posId   = safeString(msg.PositionIdentifier ?? '') || null;
+        const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
+        openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
+        let netQty = 0, wSum = 0, qSum = 0;
+        for (const [k, p] of openPositionsNow) {
+          if ((k.split('|')[0]) === sym) {
+            netQty += p.qty;
+            const w = Math.abs(p.qty);
+            if (w > 0) { wSum += p.avg * w; qSum += w; }
+          }
+        }
+        const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
+        state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
+      } catch (e) { console.error('[DTC] Erreur handler Type 305 (POSITION_SNAPSHOT):', e); }
+      return;
+    }
 
-	// 306 = POSITION_UPDATE → maintient le snapshot openPositionsNow
-	if (msg.Type === 306 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
-		// Cas "NoPositions" → vide le snapshot
-		if (msg.NoPositions === 1) {
-			openPositionsNow.clear();
-			// on garde aussi un miroir "lisible" pour l'UI
-			state.perSymbolPos.clear();
-			return;
-		}
-		const sym = safeString(msg.Symbol);
-		if (!sym) return;
+    // 306 = POSITION_UPDATE → maintient le snapshot openPositionsNow
+    if (msg.Type === 306 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+      try {
+        // Cas "NoPositions" → vide le snapshot
+        if (msg.NoPositions === 1) {
+          openPositionsNow.clear();
+          // on garde aussi un miroir "lisible" pour l'UI
+          state.perSymbolPos.clear();
+          return;
+        }
+        const sym = safeString(msg.Symbol);
+        if (!sym) return;
 
-		const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
-		const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
-		const avgNorm = normalizePrice(sym, avgRaw);
-		const posId   = safeString(msg.PositionIdentifier ?? '') || null;
+        const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
+        const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
+        const avgNorm = normalizePrice(sym, avgRaw);
+        const posId   = safeString(msg.PositionIdentifier ?? '') || null;
 
-		// clé selon la capability serveur
-		const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
+        // clé selon la capability serveur
+        const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
 
-		openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
+        openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
 
-		// miroir simple par symbole (somme nette + moyenne pondérée) pour l'UI
-		let netQty = 0, wSum = 0, qSum = 0;
-		for (const [k, p] of openPositionsNow) {
-			if ((k.split('|')[0]) === sym) {
-				netQty += p.qty;
-				const w = Math.abs(p.qty);
-				if (w > 0) { wSum += p.avg * w; qSum += w; }
-			}
-		}
-		const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
-		state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
-		return;
-	}
+        // miroir simple par symbole (somme nette + moyenne pondérée) pour l'UI
+        let netQty = 0, wSum = 0, qSum = 0;
+        for (const [k, p] of openPositionsNow) {
+          if ((k.split('|')[0]) === sym) {
+            netQty += p.qty;
+            const w = Math.abs(p.qty);
+            if (w > 0) { wSum += p.avg * w; qSum += w; }
+          }
+        }
+        const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
+        state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
+      } catch (e) { console.error('[DTC] Erreur handler Type 306 (POSITION_UPDATE):', e); }
+      return;
+    }
 
 			// 301 = ORDER_UPDATE (live fills)
 			if (msg.Type === 301 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+				try {
 				const hasFill =
 					msg.OrderUpdateReason === 4 || msg.OrderUpdateReason === 5 ||
 					(safeNumber(msg.LastFillQuantity, 0) > 0 &&
@@ -2132,7 +2144,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				const price = safeNumber(msg.LastFillPrice ?? msg.AverageFillPrice ?? 0);
 				const ts    = parseDtcTime(msg.LastFillDateTime ?? msg.LastFillDateTimeWithMilliseconds ?? Date.now()/1000);
 				const comm  = safeNumber(msg.Commission ?? 0);
-
 
 				// 🔧 CORRECTION DTC : ORDER_UPDATE (Type 301) utilise LastFillExecutionID
 				// Référence: https://www.sierrachart.com/index.php?page=doc/DTCMessages_TradingRelatedMessages.php
@@ -2161,11 +2172,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 
 				applyFill(msg.Symbol, side, qty, price, ts, comm, exactKey, 'live');
+				} catch (e) { console.error('[DTC] Erreur handler Type 301 (ORDER_UPDATE):', e); }
 				return;
 			}
 
       // 304 = HISTORICAL_ORDER_FILL_RESPONSE
       if (msg.Type === 304) {
+        try {
         // Filtrer par requête si on en a une en cours
         if (currentHistoryReqId !== null && msg.RequestID !== undefined && msg.RequestID !== currentHistoryReqId) return;
 
@@ -2208,13 +2221,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = msg.TotalNumberMessagesForRequest ?? msg.TotalNumberMessages;
         const num   = msg.MessageNumberForRequest ?? msg.MessageNumber;
         if (total && num && num === total) { processHistoricalFills(); }
+        } catch (e) { console.error('[DTC] Erreur handler Type 304 (HISTORICAL_ORDER_FILL_RESPONSE):', e); }
         return;
       }
 		updateLatency();
-    } catch (error) {
-      console.error('Erreur lors du traitement du message DTC:', error);
-      showStatusMessage('Erreur lors du traitement des données', 'error', 3000);
-    }
+  }
   }
 
   function processHistoricalFills() {

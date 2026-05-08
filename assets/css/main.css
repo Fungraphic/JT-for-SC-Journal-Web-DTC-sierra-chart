@@ -51,6 +51,7 @@
 
   /* Accent déclinaisons */
   --accent-hover: rgba(79,70,229,.9);
+  --accent-2-hover: rgba(124,58,237,.7);
   --accent-faint: rgba(79,70,229,.08);
   --accent-light: rgba(79,70,229,.5);
   --accent-ring: rgba(79,70,229,0.30);
@@ -62,8 +63,38 @@
   --green-border: rgba(34, 197, 94, 0.3);
   --green-subtle: rgba(34, 197, 94, 0.1);
 
-  /* Slate */
+  /* Slate déclinaisons */
   --slate-border: rgba(148,163,184,0.35);
+  --slate-glow: rgba(148,163,184,0.15);
+
+  /* Rouge déclinaisons */
+  --red-faint: rgba(239,68,68,0.1);
+  --red-border: rgba(239,68,68,0.3);
+  --red-glow: rgba(239,68,68,0.25);
+  --red-ring: rgba(239,68,68,.2);
+
+  /* Ambre déclinaisons */
+  --amber-faint: rgba(245,158,11,0.1);
+  --amber-border: rgba(245,158,11,0.3);
+  --amber-glow: rgba(245,158,11,.2);
+
+  /* Focus / interaction */
+  --focus-ring: rgba(99,102,241,.25);
+  --btn-hover-shadow: 0 10px 20px rgba(0,0,0,0.2);
+
+  /* Overlays & darks */
+  --overlay-bg: rgba(0,0,0,.45);
+  --drag-handle-bg: rgba(0,0,0,.28);
+  --shadow-end: rgba(0,0,0,0.20);
+  --spinner-border: rgba(255,255,255,0.3);
+  --fab-border: rgba(255,255,255,.15);
+  --color-input-border: rgba(255,255,255,.2);
+  --surface-faint: rgba(255,255,255,.03);
+  --surface-faint-2: rgba(255,255,255,.04);
+
+  /* Donut */
+  --donut-min: 120px;
+  --donut-max: 240px;
 }
 
     * { box-sizing: border-box; }
@@ -88,7 +119,7 @@
       background:
         radial-gradient(1400px 800px at -10% -10%, var(--accent-ring), transparent 60%),
         radial-gradient(1400px 800px at 110% 10%, var(--accent-border), transparent 60%),
-        linear-gradient(180deg, var(--surface-hover), rgba(0,0,0,0.20));
+        linear-gradient(180deg, var(--surface-hover), var(--shadow-end));
       background-repeat: no-repeat;
     }
     
@@ -115,7 +146,7 @@
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      color: white;
+      color: var(--white);
       font-size: 18px;
     }
     
@@ -136,11 +167,11 @@
       height: 10px; 
       border-radius: 50%; 
       background: var(--border-subtle);
-      box-shadow: 0 0 0 3px rgba(245,158,11,.2);
+      box-shadow: 0 0 0 3px var(--amber-glow);
       transition: all 0.3s ease;
     }
     .dot.ok { background: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
-    .dot.err { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+    .dot.err { background: var(--red); box-shadow: 0 0 0 3px var(--red-ring); }
     
     .conn-text { font-weight: 600; color: var(--text); }
     
@@ -190,16 +221,12 @@
     
     select:focus, input:focus { 
       border-color: var(--blue); 
-      box-shadow: 0 0 0 3px rgba(99,102,241,.25); 
+      box-shadow: 0 0 0 3px var(--focus-ring); 
     }
     select:focus-visible, input:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 2px;
       border-color: var(--accent);
-    }
-    .btn:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
     }
     
     select option { background-color: var(--deep-bg); color: var(--text); }
@@ -225,7 +252,7 @@
     
     .btn:hover { 
       transform: translateY(-1px); 
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+      box-shadow: var(--btn-hover-shadow);
       border-color: var(--border-strong);
     }
     .btn:active { transform: translateY(0); }
@@ -269,8 +296,6 @@
       transition: opacity 0.2s ease;
     }
 
-    .widget-title { font-weight: 600; font-size: 14px; opacity: .9; }
-		
     .widget.dragging { opacity: .65; }
     
     .drag-handle { 
@@ -281,7 +306,7 @@
       font-size: 12px; 
       line-height: 1; 
       border-radius: 8px; 
-      background: rgba(0,0,0,.28); 
+      background: var(--drag-handle-bg); 
       border: 1px solid var(--border-prominent);
       user-select: none; 
       cursor: grab; 
@@ -310,12 +335,15 @@
       cursor: crosshair;
     }
 
-	/* Donuts : garder un cercle parfait malgré le header */
+	/* Donuts : ronds, centrés et limités en taille */
 	[data-widget-id="w-pie-winloss"] canvas,
 	[data-widget-id="w-pie-bysymbol"] canvas,
 	[data-widget-id="w-capital-profit"] canvas{
-	  height: auto !important;   /* annule le 350px */
-	  aspect-ratio: 1 / 1;       /* carré => donut non ovale */
+	  width: clamp(var(--donut-min), 90%, var(--donut-max)) !important;
+	  height: auto !important;
+	  aspect-ratio: 1 / 1;
+	  display: block;
+	  margin: 30px auto 30px;
 	}
 
 	/* Style unique pour toutes les barres de titre */
@@ -417,7 +445,7 @@
       display: inline-block;
       width: 16px;
       height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
+      border: 2px solid var(--spinner-border);
       border-radius: 50%;
       border-top-color: var(--accent);
       animation: spin 1s ease-in-out infinite;
@@ -437,8 +465,8 @@
       right: 18px;
       bottom: 20px;
       z-index: 70;
-      border: 1px solid rgba(255,255,255,.15);
-      background: linear-gradient(135deg, var(--accent-hover), rgba(124,58,237,.7));
+      border: 1px solid var(--fab-border);
+      background: linear-gradient(135deg, var(--accent-hover), var(--accent-2-hover));
       color: var(--white);
       border-radius: 999px;
       box-shadow: var(--shadow);
@@ -471,12 +499,12 @@
     .settings-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.45);
+      background: var(--overlay-bg);
       backdrop-filter: saturate(120%) blur(2px);
       opacity: 0;
       pointer-events: none;
       transition: opacity .2s ease;
-      z-index: 59;
+      z-index: 9998;
     }
     
     .settings-overlay.open {
@@ -553,7 +581,7 @@
     .setting-row input[type="color"] {
       width: 38px;
       height: 28px;
-      border: 1px solid rgba(255,255,255,.2);
+      border: 1px solid var(--color-input-border);
       background: transparent;
       border-radius: 6px;
       padding: 0;
@@ -637,14 +665,14 @@
     }
     
     .status-message.error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: var(--red-faint);
+      border: 1px solid var(--red-border);
       color: var(--red);
     }
     
     .status-message.warning {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: var(--amber-faint);
+      border: 1px solid var(--amber-border);
       color: var(--amber);
     }  
 
@@ -653,7 +681,7 @@
 	#zone-news .widget { 
 		padding:10px 12px; 
 		border-radius:12px; 
-		background:rgba(255,255,255,.03);
+		background: var(--surface-faint);
 		border:1px solid var(--border-subtle);
 	}
 
@@ -662,11 +690,11 @@
 		width:10px;height:10px;border-radius:50%;
 		display:inline-block;margin-left:8px;vertical-align:-1px;
 		background:var(--border-prominent);
-		box-shadow:0 0 0 3px rgba(148,163,184,.15);
+		box-shadow:0 0 0 3px var(--slate-glow);
 		transition:background .15s ease, box-shadow .15s ease, opacity .15s ease;
 	}
 	.refresh-led.on-green{ background:var(--green); box-shadow:0 0 0 3px var(--green-faint); }
-	.refresh-led.on-red{   background:var(--red);   box-shadow:0 0 0 3px rgba(239,68,68,.25); }
+	.refresh-led.on-red{   background:var(--red);   box-shadow:0 0 0 3px var(--red-glow); }
 
 	/* animation de pulse pour l'état "actif" */
 	@keyframes led-pulse {
@@ -707,10 +735,9 @@
 	}
 
 	/* Enrobage visuel pour le header du mode dépliable */
+	/* Collapsible overrides (base styles from .widget-header) */
 	.widget.collapsible .widget-header{
-	  display:flex; align-items:center; justify-content:space-between;
-	  gap:10px; padding:8px 12px;
-	  border-bottom:1px solid var(--border-subtle);
+	  gap:10px;
 	}
 	.widget.collapsible .widget-title{ font-size:13px; font-weight:600; color:var(--text); }
 	.widget.collapsible .toggle-collapse{
@@ -732,10 +759,9 @@
 	/* Le widget calendrier n'a pas de padding externe */
 	#zone-news [data-widget-id="w-eco-cal"]{ padding:0 !important; }
 
-	/* Header simple du calendrier */
+	/* Header du calendrier (base styles from .widget-header) */
 	[data-widget-id="w-eco-cal"] .widget-header{
-	  display:flex;align-items:center;justify-content:space-between;
-	  gap:8px;padding:8px 12px;border-bottom:1px solid var(--border-subtle);
+	  gap:8px;
 	}
 	[data-widget-id="w-eco-cal"] .widget-title{font-weight:600;font-size:14px;opacity:.9}
 	[data-widget-id="w-eco-cal"] .toggle-collapse{
@@ -749,7 +775,7 @@
 	  margin:10px 0;
 	  border:1px solid var(--border-light);
 	  border-radius:12px;
-	  background:rgba(255,255,255,.04);
+	  background: var(--surface-faint-2);
 	  overflow:hidden;
 	}
 	.section .acc-header{
@@ -787,7 +813,6 @@
 	.settings-tools .mini:hover{ background:var(--border-medium); }
 
 	/* Overlay et drawer tout en haut de la pile */
-	.settings-overlay { z-index: 9998; }
 	.settings-drawer  { z-index: 9999; }
 
 	/* Le FAB doit passer derrière l'overlay, ou disparaître quand le tiroir est ouvert */
@@ -806,7 +831,20 @@
 		 on le remet sous l'overlay UNIQUEMENT quand le tiroir est ouvert */
 	body.drawer-open #economic-calendar-819954 * { z-index: 0 !important; }
 
-:focus-visible {
+/* :focus-visible on all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+.btn:focus-visible,
+.preset:focus-visible,
+.fab-settings:focus-visible,
+.settings-close:focus-visible,
+.toggle-collapse:focus-visible,
+.acc-header:focus-visible,
+.mini:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }

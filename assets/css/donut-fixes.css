@@ -1,16 +1,2 @@
 /* === Donut Fixes === */
-:root{
-	--donut-min: 120px;
-	--donut-max: 240px;   /* ajuste selon le rendu souhaité */
-}
-
-/* Donuts : ronds, centrés, et limités en taille */
-[data-widget-id="w-pie-winloss"] canvas,
-[data-widget-id="w-pie-bysymbol"] canvas,
-[data-widget-id="w-capital-profit"] canvas{
-	width: clamp(var(--donut-min), 90%, var(--donut-max)) !important; 
-	height: auto !important;      /* remplace le 350px */
-	aspect-ratio: 1 / 1;          /* cercle parfait */
-	display: block;
-	margin: 30px auto 30px;        /* centré */
-}
+/* Rules moved to main.css (--donut-min, --donut-max in :root) */
