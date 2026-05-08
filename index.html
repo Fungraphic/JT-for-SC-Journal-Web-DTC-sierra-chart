@@ -639,11 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     }
     _emitJson(str) {
-      try {
-        const msg = JSON.parse(str);
-        console.log('[DTC][_emitJson] Type:', msg.Type, 'len:', str.length);
-        this.onMessage(msg);
-      } catch (e) { console.warn('JSON parse error', e, str); }
+      try { this.onMessage(JSON.parse(str)); }
+      catch (e) { console.warn('JSON parse error', e, str); }
     }
   }
 
@@ -1916,7 +1913,6 @@ document.addEventListener('DOMContentLoaded', () => {
     client = new DTCClient(url);
 
     client.onOpen = () => {
-			console.log('[DTC][onOpen] WebSocket ouvert, envoi LOGON_REQUEST');
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';
       state.connected = true;
@@ -1936,7 +1932,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     };
     client.onClose = () => {
-			console.log('[DTC][onClose] WebSocket fermé, manualDisconnect:', manualDisconnect);
 			const latEl = document.getElementById('latency');
 			if (latEl) latEl.textContent = '⏱ …';					
       stopKpiPolling();
@@ -1961,7 +1956,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus(false, 'Erreur connexion', true);
       qs('#statusPill').textContent = 'Erreur connexion';
       setButtonLoading(connectBtn, false);
-      console.error('[DTC][onError]', e, 'ws.readyState:', client?.ws?.readyState, 'url:', url);
+      console.error('[DTC][onError]', e);
       showStatusMessage('Erreur de connexion: ' + (e?.message || 'inconnue'), 'error');
       scheduleReconnect();
     };
