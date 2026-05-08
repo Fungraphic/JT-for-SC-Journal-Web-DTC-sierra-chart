@@ -14,7 +14,7 @@
 	  frame-src  https://fxverify.com https://*.fxverify.com;
 	">	 
   
-  <title>JT for SC — Journal Web DTC - Version 1.30</title>
+  <title>JT for SC — Journal Web DTC - Version 1.31</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/main.css">
@@ -1721,6 +1721,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			recomputeKpisForSim();
 			requestKpisNow();
 		}
+		// Mettre à jour l'affichage des trades en cours (PnL temps réel)
+		renderOpenTrades();
 	}
 
   // Filet de sécurité : re-demande des fills récents via 303 → 304
@@ -1771,6 +1773,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function stopFillsPolling() {
     if (fillsPollTimer) { clearInterval(fillsPollTimer); fillsPollTimer = null; }
+  }
+
+  // Affiche les trades en cours (positions ouvertes) dans le tableau
+  function renderOpenTrades() {
+    // Supprimer les anciennes lignes de trades ouverts
+    qsa('.open-trade-row').forEach(el => el.remove());
+
+    if (ftfEngine.openTrades.size === 0) return;
+
+    const em = qs('#emptyMsg');
+    if (em) em.style.display = 'none';
+
+    for (const [symbol, trade] of ftfEngine.openTrades) {
+      // Calculer le PnL réalisé partiel (scale-outs)
+      const realizedFromScaleOuts = trade.scaleOuts.reduce((s, so) => s + so.pnl, 0);
+
+      // Dernier prix connu : dernier scale-out, ou avgEntry si aucun scale-out
+      const lastExitPrice = trade.scaleOuts.length > 0
+        ? trade.scaleOuts[trade.scaleOuts.length - 1].price
+        : trade.avgEntry;
+
+      // PnL non-réalisé sur la position restante
+      const unrealizedPnl = priceToCurrency(symbol, (lastExitPrice - trade.avgEntry) * trade.side * trade.totalQty);
+      const totalPnl = realizedFromScaleOuts + unrealizedPnl;
+
+      const trEl = document.createElement('tr');
+      trEl.classList.add('open-trade-row');
+      trEl.style.borderLeft = '3px solid ' + getVar('--accent') || '#3b82f6';
+      const day = new Date(trade.openTime).toLocaleDateString('fr-FR');
+      const row = [
+        day,
+        new Date(trade.openTime).toLocaleString('fr-FR'),
+        '⏳ En cours',
+        symbol,
+        trade.side === 1 ? 'Buy' : 'Sell',
+        String(trade.totalQty),
+        fmt(trade.avgEntry, 2),
+        fmt(lastExitPrice, 2),
+        fmt(totalPnl, 2)
+      ];
+      for (const txt of row) {
+        const td = document.createElement('td');
+        td.textContent = txt;
+        trEl.appendChild(td);
+      }
+      // PnL en temps réel à gauche
+      const pnlCell = trEl.lastElementChild;
+      if (totalPnl > 0) pnlCell.style.color = getVar('--green') || '#22c55e';
+      else if (totalPnl < 0) pnlCell.style.color = getVar('--red') || '#ef4444';
+      // Ajouter un tooltip avec les détails
+      trEl.title = `PnL réalisé partiel: $${fmt(realizedFromScaleOuts,2)} | PnL non-réalisé: $${fmt(unrealizedPnl,2)} | Scale-outs: ${trade.scaleOuts.length}`;
+      qs('#tradesTable tbody').prepend(trEl);
+    }
   }
 
   function addTradeRowTrade(tr) {
@@ -2457,6 +2512,9 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log(`[FTF] Fenêtre: FILTER_FROM_MS=${FILTER_FROM_MS ? new Date(FILTER_FROM_MS).toISOString() : 'null'}, FILTER_TO_MS=${FILTER_TO_MS ? new Date(FILTER_TO_MS).toISOString() : 'null'}`);
       console.log(`[FTF] Fills dans le buffer: ${buffer.length}/${_fillsBuffer.length + buffer.length}`);
 
+      // Afficher les trades en cours (positions ouvertes)
+      renderOpenTrades();
+
     } catch (error) {
       console.error('Erreur lors du traitement de l\'historique:', error);
       showStatusMessage('Erreur lors du traitement de l\'historique', 'error');
@@ -3032,9 +3090,16 @@ document.addEventListener('DOMContentLoaded', () => {
   updateChartsTheme();
   window.addEventListener('load', () => { setTimeout(syncInputsFromVars, 0); });
 
-  // Diagnostic final
-  console.assert(typeof saveLayout === 'function', 'Layout persistence functions exist');
-  console.assert(qsa('.widget').length > 0, 'Widgets should exist');
+  // Diagnostic final — expose window.__debug AVANT fin du scope
+  window.__debug = {
+    ftfEngine, state, fillStats, accounts, selectedAccount: () => selectedAccount,
+    isLoadingHistory: () => isLoadingHistory, currentHistoryReqId: () => currentHistoryReqId,
+    FILTER_FROM_MS: () => FILTER_FROM_MS, FILTER_TO_MS: () => FILTER_TO_MS,
+    initialDataSent: () => initialDataSent, client, seenFillKeys,
+    openPositionsNow, _fillsBuffer, pendingLiveFills,
+    requestInitialData, applyFill
+  };
+  console.log('[JT for SC] __debug exposé. Utilise __debug.ftfEngine, __debug.state, etc.');
   console.log('[JT for SC] Application initialisée avec succès');
 
   // Assure l’état du bouton "Activer Zoom" après init
