@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 	<meta http-equiv="Content-Security-Policy" content="
-	  default-src 'self' data: blob: https: qrc:;
+	  default-src 'self' data: blob: qrc:;
 	  script-src 'self' 'unsafe-inline' qrc: https://fxverify.com https://*.fxverify.com;
 	  style-src  'self' 'unsafe-inline' qrc: https://fonts.googleapis.com;
 	  font-src   'self' data: qrc: https://fonts.gstatic.com;
@@ -14,792 +14,13 @@
 	  frame-src  https://fxverify.com https://*.fxverify.com;
 	">	 
   
-  <title>JT for SC — Journal Web DTC - Version 1.27</title>
+  <title>JT for SC — Journal Web DTC - Version 1.28</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0b0f17;
-      --panel: #111827;
-      --panel-2: #0f172a;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #4f46e5;
-      --accent-2: #7c3aed;
-      --green: #22c55e;
-      --red: #ef4444;
-      --amber: #f59e0b;
-      --slate: #475569;
-      --radius: 14px;
-      --radius-sm: 10px;
-      --shadow: 0 10px 30px rgba(0,0,0,0.35);
-      --btn-preset-text: #e5e7eb;
-      --btn-preset-text-hover: #ffffff;
-      --fab-size: 46px;
-      --fab-icon: 32px;
-      --fab-stroke: 2.25;
-    }
-    
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      color: var(--text);
-      background: var(--bg);
-      min-height: 100vh;
-      position: relative;
-      overflow-x: hidden;
-    }
-    
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: -1;
-      background:
-        radial-gradient(1400px 800px at -10% -10%, rgba(79,70,229,0.30), transparent 60%),
-        radial-gradient(1400px 800px at 110% 10%, rgba(79,70,229,0.12), transparent 60%),
-        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.20));
-      background-repeat: no-repeat;
-    }
-    
-    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
-    
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .logo { 
-      width: 64px; 
-      height: 64px; 
-      border-radius: 10px; 
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); 
-      object-fit: cover; 
-      box-shadow: var(--shadow); 
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      color: white;
-      font-size: 18px;
-    }
-    
-    .title { font-weight: 700; letter-spacing: 0.2px; }
-    .subtitle { color: var(--muted); font-size: 13px; }
-    
-    .conn-status { 
-      display: flex; 
-      align-items: center; 
-      gap: 8px; 
-      padding: 12px 16px; 
-      border-left: 4px solid rgba(255,255,255,.06); 
-      margin-left: auto; 
-    }
-    
-    .dot { 
-      width: 10px; 
-      height: 10px; 
-      border-radius: 50%; 
-      background: rgba(255,255,255,.06); 
-      box-shadow: 0 0 0 3px rgba(245,158,11,.2);
-      transition: all 0.3s ease;
-    }
-    .dot.ok { background: var(--green); box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
-    .dot.err { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
-    
-    .conn-text { font-weight: 600; color: var(--text); }
-    
-    .card { 
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); 
-      border: 1px solid rgba(255,255,255,0.06); 
-      border-radius: var(--radius); 
-      box-shadow: var(--shadow); 
-    }
-    
-    .controls {
-      display: grid; 
-      gap: 16px; 
-      padding: 16px; 
-      align-items: end;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    
-    @media (min-width: 1100px) {
-      .controls { grid-template-columns: 1.2fr .7fr .7fr .7fr .5fr auto auto; }
-    }
-    
-    .controls .group { display: flex; flex-direction: column; gap: 8px; }
-    
-    label { font-size: 12px; color: var(--muted); font-weight: 500; }
-    
-    input, select {
-      background: #0f172a;
-      border: 1px solid rgba(148,163,184,0.35);
-      color: #f8fafc;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      outline: none;
-      width: 100%;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    select {
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='%23e5e7eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 36px;
-    }
-    
-    select:focus, input:focus { 
-      border-color: #6366f1; 
-      box-shadow: 0 0 0 3px rgba(99,102,241,.25); 
-    }
-    
-    select option { background-color: #0b1220; color: #e5e7eb; }
-    select::-ms-expand { display: none; }
-    input::placeholder { color: rgba(255,255,255,.5); }
-    
-    .btn { 
-      border: 1px solid rgba(255,255,255,0.12); 
-      border-radius: var(--radius-sm); 
-      background: linear-gradient(135deg, rgba(79,70,229,.5), rgba(255,255,255,.06)); 
-      color: var(--text); 
-      font-weight: 600; 
-      padding: 10px 14px; 
-      cursor: pointer; 
-      transition: transform .05s ease, box-shadow .2s ease, border-color .2s ease; 
-      width: 100%;
-      font-family: inherit;
-    }
-    
-    @media (min-width: 1100px) { 
-      .controls .btn { width: auto; } 
-    }
-    
-    .btn:hover { 
-      transform: translateY(-1px); 
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2); 
-      border-color: rgba(255,255,255,.12); 
-    }
-    .btn:active { transform: translateY(0); }
-    
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    
-    .btn-ghost { 
-      background: rgba(255,255,255,.06); 
-      border: 1px solid rgba(255,255,255,.06); 
-    }
-    
-    .grid { 
-      display: grid; 
-      grid-template-columns: 1.2fr .8fr; 
-      gap: 16px; 
-      margin-top: 16px; 
-    }
-    
-    /* ZONES DRAGGABLES */
-    .drag-zone { 
-      display: grid; 
-      gap: 12px; 
-      padding: 16px; 
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-    }
-    
-    .kpis.drag-zone { 
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-    }
-    
-    /* WIDGETS DRAGGABLES */
-    .widget { 
-      position: relative; 
-      border-radius: var(--radius-sm); 
-      border: 1px solid rgba(255,255,255,.06); 
-      background: rgba(255,255,255,.06);
-      transition: opacity 0.2s ease;
-    }
-
-	/* Header générique pour n'importe quel .widget */
-	.widget-header{
-	  display:flex;align-items:center;justify-content:space-between;
-	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
-	}
-	.widget-title{font-weight:600;font-size:14px;opacity:.9}
-		
-    .widget.dragging { opacity: .65; }
-    
-    .drag-handle { 
-      position: absolute; 
-      top: 8px; 
-      right: 8px; 
-      padding: 4px 6px; 
-      font-size: 12px; 
-      line-height: 1; 
-      border-radius: 8px; 
-      background: rgba(0,0,0,.28); 
-      border: 1px solid rgba(255,255,255,.18); 
-      user-select: none; 
-      cursor: grab; 
-      opacity: 0; 
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-    
-    .drag-handle:active { cursor: grabbing; }
-    
-    body.layout-edit .drag-handle { 
-      opacity: 1; 
-      pointer-events: auto; 
-    }
-    
-    .kpi { padding: 14px; }
-    .kpi .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .kpi .value { font-size: 20px; font-weight: 700; }
-    .kpi select { width: 100%; }
-    
-    .chart { padding: 12px; }
-    .chart canvas { 
-      width: 100% !important; 
-      height: 350px !important; 
-      display: block;
-      cursor: crosshair;
-    }
-
-	/* Donuts : garder un cercle parfait malgré le header */
-	[data-widget-id="w-pie-winloss"] canvas,
-	[data-widget-id="w-pie-bysymbol"] canvas,
-	[data-widget-id="w-capital-profit"] canvas{
-	  height: auto !important;   /* annule le 350px */
-	  aspect-ratio: 1 / 1;       /* carré => donut non ovale */
-	}
-
-	/* Style unique pour toutes les barres de titre */
-	.widget-header{
-	  display:flex; align-items:center; justify-content:space-between;
-	  padding:8px 12px; min-height:38px;
-	  border-bottom:1px solid rgba(255,255,255,.06);
-	}
-	.widget-title{
-	  font-weight:600; font-size:14px; letter-spacing:.2px;
-	  color: var(--text) !important; opacity:.95;
-	}
-
-	/* Compense le padding des widgets .chart pour un header bord-à-bord */
-	.chart.widget .widget-header{
-	  margin: -12px -12px 8px;     /* annule le padding externe du widget */
-	  padding: 8px 12px;           /* garde la même hauteur que Adv. Stats */
-	}
-		
-    @media (max-width: 640px) { 
-      .chart canvas { height: 200px !important; } 
-    }
-    
-    .chart-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      margin-bottom: 6px;
-    }
-    
-    .chart-actions .btn {
-      padding: 6px 12px;
-      font-size: 12px;
-      width: auto;
-    }
-    
-    .table-wrap { padding: 12px; overflow-x: auto; }
-    .table-wrap table { 
-      width: 100%; 
-      min-width: 900px; 
-      border-collapse: collapse; 
-      font-size: 13px; 
-    }
-    
-    thead th { 
-      text-align: left; 
-      font-weight: 600; 
-      color: var(--muted); 
-      padding: 8px; 
-      border-bottom: 1px solid rgba(255,255,255,.06); 
-    }
-    
-    tbody td { 
-      padding: 10px 8px; 
-      border-bottom: 1px solid rgba(255,255,255,.06); 
-    }
-    
-    tbody tr:hover { background: rgba(255,255,255,.08); }
-    
-    .empty { 
-      padding: 16px; 
-      text-align: center; 
-      color: var(--muted); 
-    }
-    
-    footer { 
-      margin-top: 18px; 
-      text-align: right; 
-      font-size: 12px; 
-      color: rgba(255,255,255,.6); 
-    }
-    
-    .pill { 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 8px; 
-      border: 1px solid rgba(255,255,255,.12); 
-      padding: 6px 10px; 
-      border-radius: 9999px; 
-      font-size: 12px; 
-      color: var(--text); 
-      background: linear-gradient(135deg, rgba(79,70,229,.08), rgba(255,255,255,.1)); 
-    }
-    
-    .pill strong { color: var(--text); }
-    
-    #advStatsList { 
-      overflow-wrap: anywhere; 
-      word-break: break-word; 
-      white-space: normal; 
-    }
-    
-    @media (max-width: 1000px) { 
-      .grid { grid-template-columns: 1fr; } 
-    }
-    
-    /* Loading spinner */
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: var(--accent);
-      animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    .loading .spinner {
-      margin-right: 8px;
-    }
-    
-    /* Settings Drawer & FAB */
-    .fab-settings {
-      position: fixed;
-      right: 18px;
-      bottom: 20px;
-      z-index: 70;
-      border: 1px solid rgba(255,255,255,.15);
-      background: linear-gradient(135deg, rgba(79,70,229,.9), rgba(124,58,237,.7));
-      color: #fff;
-      border-radius: 999px;
-      box-shadow: var(--shadow);
-      cursor: pointer;
-      width: var(--fab-size);
-      height: var(--fab-size);
-      padding: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      font-size: 0;
-      transition: transform 0.2s ease;
-    }
-    
-    .fab-settings:hover { transform: translateY(-2px); }
-    
-    .fab-settings svg {
-      width: var(--fab-icon);
-      height: var(--fab-icon);
-      display: block;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: var(--fab-stroke);
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      shape-rendering: geometricPrecision;
-    }
-    
-    .settings-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.45);
-      backdrop-filter: saturate(120%) blur(2px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .2s ease;
-      z-index: 59;
-    }
-    
-    .settings-overlay.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    
-    .settings-drawer {
-      position: fixed;
-      top: 0;
-      right: 0;
-      height: 100%;
-      width: 410px;
-      max-width: 92vw;
-      background: var(--panel-2);
-      border-left: 1px solid rgba(255,255,255,.08);
-      box-shadow: var(--shadow);
-      transform: translateX(100%);
-      transition: transform .25s ease;
-      z-index: 60;
-      color: var(--text);
-    }
-    
-    .settings-drawer.open { transform: translateX(0); }
-    
-    .settings-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-    
-    .settings-title { font-weight: 700; }
-    
-    .settings-close {
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background-color 0.2s ease;
-    }
-    
-    .settings-close:hover {
-      background: rgba(255,255,255,.1);
-    }
-    
-    .settings-content {
-      padding: 14px 14px 80px;
-      overflow: auto;
-      height: calc(100% - 52px);
-    }
-    
-    .section { margin-bottom: 16px; }
-    .section h4 { 
-      margin: 10px 0 8px 0; 
-      font-size: 13px; 
-      color: var(--muted); 
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .setting-row {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    
-    .setting-row input[type="color"] {
-      width: 38px;
-      height: 28px;
-      border: 1px solid rgba(255,255,255,.2);
-      background: transparent;
-      border-radius: 6px;
-      padding: 0;
-      cursor: pointer;
-    }
-    
-    .setting-row input[type="text"] {
-      width: 110px;
-      background: #0f172a;
-      border: 1px solid rgba(148,163,184,0.35);
-      color: #f8fafc;
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-    
-    .palette-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 8px;
-    }
-    
-    .palette-item {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    
-    .preset-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    
-    .preset {
-      padding: 8px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 10px;
-      background: rgba(255,255,255,.06);
-      cursor: pointer;
-      text-align: center;
-      font-size: 12px;
-      color: var(--btn-preset-text);
-      font-family: inherit;
-      transition: all 0.2s ease;
-    }
-    
-    .preset:hover,
-    .preset:focus {
-      background: rgba(255,255,255,.1);
-      color: var(--btn-preset-text-hover);
-      outline: none;
-      transform: translateY(-1px);
-    }
-    
-    .toggle { 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 8px; 
-      font-size: 13px; 
-    }
-    
-    .toggle input[type="checkbox"] {
-      width: auto;
-      accent-color: var(--accent);
-    }
-    
-    /* Status messages */
-    .status-message {
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-      margin: 8px 0;
-      display: none;
-    }
-    
-    .status-message.success {
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: #22c55e;
-    }
-    
-    .status-message.error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #ef4444;
-    }
-    
-    .status-message.warning {
-      background: rgba(245, 158, 11, 0.1);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: #f59e0b;
-    }  
-	/* Header générique pour n'importe quel .widget */
-	.widget-header{
-	  display:flex;align-items:center;justify-content:space-between;
-	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
-	}
-	.widget-title{font-weight:600;font-size:14px;opacity:.9}
-
-	/* ===== FF News — USD (High/Med) ===== */
-	#zone-news { grid-template-columns: 1fr; } /* pleine largeur */
-	#zone-news .widget { 
-		padding:10px 12px; 
-		border-radius:12px; 
-		background:rgba(255,255,255,.03);
-		border:1px solid rgba(255,255,255,.06);
-	}
-
-	/* Voyant de rafraîchissement (sans décalage de layout) */
-	.refresh-led{
-		width:10px;height:10px;border-radius:50%;
-		display:inline-block;margin-left:8px;vertical-align:-1px;
-		background:rgba(255,255,255,.18);
-		box-shadow:0 0 0 3px rgba(148,163,184,.15);
-		transition:background .15s ease, box-shadow .15s ease, opacity .15s ease;
-	}
-	.refresh-led.on-green{ background:var(--green); box-shadow:0 0 0 3px rgba(34,197,94,.25); }
-	.refresh-led.on-red{   background:var(--red);   box-shadow:0 0 0 3px rgba(239,68,68,.25); }
-
-	/* animation de pulse pour l'état "actif" */
-	@keyframes led-pulse {
-		0%, 100% { transform: scale(1);   opacity: .95; }
-		50%      { transform: scale(1.25); opacity: 1;   }
-	}
-	.refresh-led.pulse { animation: led-pulse 1s ease-in-out infinite; }
-						
-	/* Calendrier fxverify — pas de scroll interne, hauteur auto */
-	.widget[data-widget-id="w-eco-cal"]{
-		padding: 0 !important;
-		height: auto !important;
-		max-height: none !important;
-		overflow: visible !important;
-	}
-
-	#economic-calendar-819954{
-		min-height: 0 !important;
-		height: auto !important;
-		overflow: visible !important;
-	}
-
-	/* === Modes du calendrier === */
-	/* Mode compact : hauteur fixe + scroll interne sur #ec-scroller */
-	.widget[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller{
-	  height: clamp(200px, 55vh, 280px) !important;
-	  overflow: auto !important;
-	  overscroll-behavior: contain;
-	  -webkit-overflow-scrolling: touch;
-	  scrollbar-width: none;
-	}
-	.widget[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller::-webkit-scrollbar{ width: 0; height: 0; }
-
-	/* Mode dépliable : hauteur auto (pas de scroll interne) */
-	.widget[data-widget-id="w-eco-cal"].collapsible #ec-scroller{
-	  height: auto !important;
-	  overflow: visible !important;
-	}
-
-	/* Enrobage visuel pour le header du mode dépliable */
-	.widget.collapsible .widget-header{
-	  display:flex; align-items:center; justify-content:space-between;
-	  gap:10px; padding:8px 12px;
-	  border-bottom:1px solid rgba(255,255,255,.06);
-	}
-	.widget.collapsible .widget-title{ font-size:13px; font-weight:600; color:var(--text); }
-	.widget.collapsible .toggle-collapse{
-	  background:rgba(255,255,255,.06);
-	  border:1px solid rgba(255,255,255,.12);
-	  color:var(--text); font-size:12px; font-weight:600;
-	  border-radius:10px; padding:6px 10px; cursor:pointer;
-	}
-	.widget.collapsible .toggle-collapse:hover{ background:rgba(255,255,255,.10); }
-
-	/* Animation douce de repli */
-	#ec-scroller{ transition: height .2s ease; }
-	/* État replié (collapsible) */
-	.widget.collapsible[data-collapsed="1"] #ec-scroller{
-	  height:0 !important; overflow:hidden !important; padding:0 !important; margin:0 !important;
-	}
-	.widget.collapsible[data-collapsed="1"] .widget-content{ padding:0 !important; }
-
-	/* Le widget calendrier n'a pas de padding externe */
-	#zone-news [data-widget-id="w-eco-cal"]{ padding:0 !important; }
-
-	/* Header simple du calendrier */
-	[data-widget-id="w-eco-cal"] .widget-header{
-	  display:flex;align-items:center;justify-content:space-between;
-	  gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);
-	}
-	[data-widget-id="w-eco-cal"] .widget-title{font-weight:600;font-size:14px;opacity:.9}
-	[data-widget-id="w-eco-cal"] .toggle-collapse{
-	  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-	  color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font:600 12px/1 Inter,system-ui;
-	}
-	[data-widget-id="w-eco-cal"] .toggle-collapse:hover{background:rgba(255,255,255,.1)}
-
-	/* === Settings — Accordéon par sections === */
-	.settings-content .section{
-	  margin:10px 0;
-	  border:1px solid rgba(255,255,255,.08);
-	  border-radius:12px;
-	  background:rgba(255,255,255,.04);
-	  overflow:hidden;
-	}
-	.section .acc-header{
-	  width:100%;
-	  display:flex;align-items:center;justify-content:space-between;gap:8px;
-	  padding:10px 12px;
-	  background:rgba(255,255,255,.02);
-	  border:0; cursor:pointer; text-align:left;
-	  font-weight:700; font-size:13px; color:var(--text);
-	}
-	.section .acc-header .acc-caret{
-	  width:16px; height:16px; flex:0 0 auto;
-	  transition:transform .2s ease, opacity .2s ease;
-	  opacity:.9;
-	}
-	.section .acc-header[aria-expanded="false"] .acc-caret{ transform:rotate(-90deg); opacity:.7; }
-	.section .acc-body{
-	  padding:12px 14px;
-	  border-top:1px solid rgba(255,255,255,.06);
-	}
-	.section.collapsed .acc-body{ display:none; }
-
-	/* petits boutons outils dans l’entête du tiroir */
-	.settings-tools{
-	  display:flex; gap:8px; align-items:center; margin-left:auto;
-	}
-	.settings-tools .mini{
-	  background:rgba(255,255,255,.06);
-	  border:1px solid rgba(255,255,255,.12);
-	  color:var(--text);
-	  border-radius:8px; padding:6px 8px;
-	  font:600 12px/1 Inter,system-ui;
-	  cursor:pointer;
-	}
-	.settings-tools .mini:hover{ background:rgba(255,255,255,.1); }
-
-	/* Overlay et drawer tout en haut de la pile */
-	.settings-overlay { z-index: 9998; }
-	.settings-drawer  { z-index: 9999; }
-
-	/* Le FAB doit passer derrière l’overlay, ou disparaître quand le tiroir est ouvert */
-	.fab-settings { z-index: 9980; }
-
-	/* Option : cacher/neutraliser le FAB quand le tiroir est ouvert */
-	body.drawer-open .fab-settings {
-		opacity: 0;
-		pointer-events: none;
-	}
-
-	/* Option : bloquer le scroll de la page quand le tiroir est ouvert */
-	body.drawer-open { overflow: hidden; }
-
-	/* Ceinture et bretelles : si le calendrier a un z-index délirant,
-		 on le remet sous l’overlay UNIQUEMENT quand le tiroir est ouvert */
-	body.drawer-open #economic-calendar-819954 * { z-index: 0 !important; }
-						
-  </style>
-	<style id="donut-fixes">
-	  :root{
-		--donut-min: 120px;
-		--donut-max: 240px;   /* ajuste selon le rendu souhaité */
-	  }
-
-	  /* Donuts : ronds, centrés, et limités en taille */
-	  [data-widget-id="w-pie-winloss"] canvas,
-	  [data-widget-id="w-pie-bysymbol"] canvas,
-	  [data-widget-id="w-capital-profit"] canvas{
-		width: clamp(var(--donut-min), 90%, var(--donut-max)) !important; 
-		height: auto !important;      /* remplace le 350px */
-		aspect-ratio: 1 / 1;          /* cercle parfait */
-		display: block;
-		margin: 30px auto 30px;        /* centré */
-	  }
-	</style>
+    <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/donut-fixes.css">
+  <link rel="stylesheet" href="assets/css/calendar.css">
+	
 </head>
 <body>
   <div class="container">
@@ -875,48 +96,7 @@
       </div>
 
 <!-- ZONE NEWS — fxverify (hauteur fixée, scroll interne) -->
-<style>
-	#zone-news [data-widget-id="w-eco-cal"]{ padding: 0 !important; }
 
-	/* Base : on laisse le widget interne libre de grandir */
-	#economic-calendar-819954{ min-height: 0 !important; }
-
-	/* === MODE COMPACT (par défaut) — hauteur fixe + scroll interne === */
-	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller{
-	  height: clamp(200px, 55vh, 280px) !important;
-	  overflow: auto !important;
-	  overscroll-behavior: contain;
-	  -webkit-overflow-scrolling: touch;
-	  scrollbar-width: none;
-	  -ms-overflow-style: none;
-	}
-	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller::-webkit-scrollbar{
-	  width: 0; height: 0;
-	}
-
-	/* === MODE COMPACT + AUTOFIT — s’adapte à la hauteur des news (pas de scroll interne) === */
-	[data-widget-id="w-eco-cal"].calendar--compact.autofit #ec-scroller{
-	  height: auto !important;
-	  max-height: none !important;
-	  overflow: visible !important;
-	}
-
-	/* === MODE COLLAPSIBLE — quand ouvert, pas de scroll interne (taille auto) === */
-	[data-widget-id="w-eco-cal"].collapsible #ec-scroller{
-	  height: auto !important;
-	  max-height: none !important;
-	  overflow: visible !important;
-	}
-
-	/* On neutralise les conteneurs scroll internes du widget fxverify */
-	#economic-calendar-819954 .notablescroll,
-	#economic-calendar-819954 .content_table,
-	#economic-calendar-819954 .ec-fx-calendar-table,
-	#economic-calendar-819954 .ec-fx-table-container{
-	  max-height: none !important;
-	  overflow: visible !important;
-	}
-</style>
 
 <div class="drag-zone" id="zone-news">
   <div class="widget" data-widget-id="w-eco-cal">
@@ -1170,10 +350,10 @@
     </aside>
   </div>
 <!-- Librairies (UMD) -->
-<script defer src="./assets/vendor/chart.umd.min.js"></script>
-<script defer src="./assets/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
-<script defer src="./assets/vendor/hammer.min.js"></script>
-<script defer src="./assets/vendor/chartjs-plugin-zoom.min.js"></script>
+<script defer src="./assets/vendor/chart.umd.min.js" integrity="sha384-h2XyvoUqksdHpLTIghMZjKpLyvc5iNUdjaxovsGgc5hX1EOaiPbFSEpNxmJfz9dB" crossorigin="anonymous"></script>
+<script defer src="./assets/vendor/chartjs-adapter-date-fns.bundle.min.js" integrity="sha384-QrTO60sO4RJ61N2R9qXzS+ipc8vNMz5eQkfYGH33+8jvuFWVFRVu9colRCqUEaPd" crossorigin="anonymous"></script>
+<script defer src="./assets/vendor/hammer.min.js" integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm" crossorigin="anonymous"></script>
+<script defer src="./assets/vendor/chartjs-plugin-zoom.min.js" integrity="sha384-vP5Jlcx+XDoRRbi4nLRvrXhDCYM7jwrzy6F5vAwl+/aVCmf7zTdPzxXWJksXYrok" crossorigin="anonymous"></script>
 
 <!-- Bootstrap Zoom (UMD = auto-enregistré) -->
 <script>
@@ -1305,8 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	  }
 	}
 
-	// Ping régulier (toutes les 15s). S’il n’y a pas de connexion, ça ne fait rien.
-	setInterval(ping, 15000);
+	// Heartbeat géré par DTCClient.startHeartbeat() — pas de setInterval global
 	  
 	function showStatusMessage(message, type = 'info', duration = 5000) {
 		if (SUPPRESS_NON_ERROR_BANNERS && type !== 'error') return; // ← ajout
@@ -1383,11 +562,20 @@ document.addEventListener('DOMContentLoaded', () => {
       this.onMessage = () => {};
     }
     connect() {
+      if (!/^wss?:\/\//i.test(this.url)) {
+        this.onError(new Error('URL WebSocket invalide: doit commencer par ws:// ou wss://'));
+        return;
+      }
       try { this.ws = new WebSocket(this.url); }
       catch (e) { this.onError(e); return; }
-      this.ws.addEventListener('open', () => this.onOpen());
-      this.ws.addEventListener('close', ev => this.onClose(ev));
-      this.ws.addEventListener('error', e => this.onError(e));
+      this._connectTimer = setTimeout(() => {
+        console.warn('[DTC] Connexion timeout (5s)');
+        this.ws.close();
+        this.onError(new Error('Délai de connexion dépassé (5s)'));
+      }, 5000);
+      this.ws.addEventListener('open', () => { clearTimeout(this._connectTimer); this.onOpen(); });
+      this.ws.addEventListener('close', ev => { clearTimeout(this._connectTimer); this.onClose(ev); });
+      this.ws.addEventListener('error', e => { clearTimeout(this._connectTimer); this.onError(e); });
       this.ws.addEventListener('message', ev => {
         const d = ev.data;
         if (typeof d === 'string') this._processChunk(d);
@@ -1402,7 +590,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     startHeartbeat() {
       if (this._hbTimer) clearInterval(this._hbTimer);
-      this._hbTimer = setInterval(() => this.send({Type: 3}), this._hbIntervalSec * 1000);
+      this._hbTimer = setInterval(() => {
+        lastPingAt = performance.now();
+        this.send({Type: 3});
+      }, this._hbIntervalSec * 1000);
     }
     close() {
       if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
@@ -1412,6 +603,10 @@ document.addEventListener('DOMContentLoaded', () => {
     _processChunk(chunk) {
       const clean = sanitizeChunk(chunk);
       this._rxBuffer += clean;
+      if (this._rxBuffer.length > 1048576) {
+        console.error('[DTC] _rxBuffer overflow, troncation à 1MB');
+        this._rxBuffer = this._rxBuffer.slice(-524288);
+      }
       let made = true;
       while (made) {
         made = false;
@@ -1579,10 +774,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function stopKpiPolling() { if (kpiRefreshTimer) { clearInterval(kpiRefreshTimer); kpiRefreshTimer = null; } }
 
   // === RECONNEXION
+  const MAX_RECONNECT_ATTEMPTS = 10;
   function scheduleReconnect() {
     if (manualDisconnect || reconnectTimer) return;
-    const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts++));
-    qs('#statusPill').textContent = `Reconnexion dans ${Math.round(delay / 1000)}s…`;
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      showStatusMessage('Impossible de se reconnecter après ' + MAX_RECONNECT_ATTEMPTS + ' tentatives. Veuillez rafraîchir la page.', 'error', 0);
+      qs('#statusPill').textContent = 'Reconnexion impossible';
+      return;
+    }
+    const baseDelay = 1000 * Math.pow(2, reconnectAttempts);
+    const jitter = Math.random() * 1000;
+    const delay = Math.min(30000, baseDelay + jitter);
+    reconnectAttempts++;
+    qs('#statusPill').textContent = `Reconnexion dans ${Math.round(delay / 1000)}s (tentative ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})…`;
     reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, delay);
   }
   const requestKpisNow = (() => {
@@ -2152,6 +1356,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			// Libère la pipeline pour permettre le prochain poll
 			currentHistoryReqId = null;
 			isLoadingHistory = false;
+			_fillsBuffer.length = 0;  // vider le buffer de fills en cas de timeout
 			// Feedback LED : rouge pulse court puis done
 			setRefreshIndicator('error');
 			setTimeout(() => setRefreshIndicator('done'), 700);
@@ -2265,6 +1470,15 @@ document.addEventListener('DOMContentLoaded', () => {
 		// On garde aussi une “seconde chance” avec une clé approx systématique,
 		// utile si on a eu une exactKey une fois et pas la fois suivante.
 		seenFillKeys.add(approxFillKey(symbol, side, qty, price, ts));
+
+		// Sécurité mémoire : si le Set dépasse 10000 entrées, on ne garde que les 5000 plus récentes
+		if (seenFillKeys.size > 10000) {
+			const entries = [...seenFillKeys];
+			seenFillKeys.clear();
+			for (let i = Math.max(0, entries.length - 5000); i < entries.length; i++) {
+				seenFillKeys.add(entries[i]);
+			}
+		}
 
 		lastProcessedFillMS = Math.max(lastProcessedFillMS, ts);
 
@@ -2691,6 +1905,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const url = qs('#dtcUrl').value.trim();
     accountPreference = qs('#tradeAccount').value.trim();
     if (!url) { showStatusMessage('Veuillez saisir une URL WebSocket valide', 'error'); return; }
+    // Validation renforcée : rejeter les URLs dangereuses (javascript:, data:, etc.)
+    try {
+      const parsed = new URL(url);
+      if (!/^wss?$/i.test(parsed.protocol.replace(/:$/, ''))) {
+        showStatusMessage('Protocole non autorisé : seuls ws:// et wss:// sont acceptés', 'error'); return;
+      }
+    } catch { showStatusMessage('URL invalide', 'error'); return; }
 
     localStorage.setItem('dtcUrl', url);
     if (accountPreference) localStorage.setItem('tradeAccount', accountPreference);
@@ -2780,7 +2001,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // === GESTION DES MESSAGES DTC (avec Patch B & C)
   function handleDTCMessage(msg) {
     try {
-      // 2 = LOGON_RESPONSE → demander la liste des comptes
+      // Guard : message doit être un objet non null avec un Type valide
+      if (!msg || typeof msg !== 'object' || typeof msg.Type === 'undefined') {
+        console.warn('[DTC] Message mal formé ignoré :', msg);
+        return;
+      }
+      // Guard : Type doit être un entier raisonnable (DTC messages sont < 1000)
+      const msgType = safeNumber(msg.Type, -1);
+      if (msgType < 0 || msgType > 999 || !Number.isInteger(msgType)) {
+        console.warn('[DTC] Message avec Type invalide ignoré :', msg.Type);
+        return;
+      }
+      // 2 = LOGON_RESPONSE → démarrer heartbeat + demander la liste des comptes
       if (msg.Type === 2) {
         resetTradesView();
         accounts.clear();
@@ -2788,14 +2020,16 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedAccount = '';
         initialDataSent = false;
         usesMultiplePositions = !!(msg.UsesMultiplePositionsPerSymbolAndTradeAccount === 1 || msg.UsesMultiplePositionsPerSymbolAndTradeAccount === '1' || msg.UsesMultiplePositionsPerSymbolAndTradeAccount === true);
+        // Démarrer le heartbeat uniquement après LOGON_RESPONSE
+        if (client) client.startHeartbeat();
         client.send({Type: 400, RequestID: 1}); // ACCOUNTS_LIST_REQUEST
         return;
       }
 
       // 401 = ACCOUNTS_LIST_RESPONSE (stream)
       if (msg.Type === 401) {
-        if (msg.TradeAccount) {
-          accounts.add(msg.TradeAccount);
+        if (msg.TradeAccount && typeof msg.TradeAccount === 'string' && msg.TradeAccount.trim()) {
+          accounts.add(String(msg.TradeAccount).trim());
           populateAccountSelect();
           trySelectPreferredAccount();
         }
@@ -2828,6 +2062,38 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAdvancedPanel();
         return;
       }
+
+	// 305 = POSITION_SNAPSHOT (IsSnapshot=1) → même traitement que 306 mais efface d'abord
+	if (msg.Type === 305 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {
+		if (msg.IsSnapshot === 1 || msg.IsSnapshot === '1') {
+			openPositionsNow.clear();
+			state.perSymbolPos.clear();
+		}
+		if (msg.NoPositions === 1) {
+			openPositionsNow.clear();
+			state.perSymbolPos.clear();
+			return;
+		}
+		const sym = safeString(msg.Symbol);
+		if (!sym) return;
+		const qtyRaw  = safeNumber(msg.Quantity ?? msg.PositionQuantity ?? 0);
+		const avgRaw  = safeNumber(msg.AveragePrice ?? msg.AvgPrice ?? 0);
+		const avgNorm = normalizePrice(sym, avgRaw);
+		const posId   = safeString(msg.PositionIdentifier ?? '') || null;
+		const key = (usesMultiplePositions && posId) ? `${sym}|${posId}` : sym;
+		openPositionsNow.set(key, { symbol: sym, qty: qtyRaw, avg: avgNorm, positionId: posId });
+		let netQty = 0, wSum = 0, qSum = 0;
+		for (const [k, p] of openPositionsNow) {
+			if ((k.split('|')[0]) === sym) {
+				netQty += p.qty;
+				const w = Math.abs(p.qty);
+				if (w > 0) { wSum += p.avg * w; qSum += w; }
+			}
+		}
+		const avgWeighted = (qSum > 0) ? (wSum / qSum) : 0;
+		state.perSymbolPos.set(sym, { qty: netQty, avg: avgWeighted });
+		return;
+	}
 
 	// 306 = POSITION_UPDATE → maintient le snapshot openPositionsNow
 	if (msg.Type === 306 && (!msg.TradeAccount || msg.TradeAccount === selectedAccount)) {

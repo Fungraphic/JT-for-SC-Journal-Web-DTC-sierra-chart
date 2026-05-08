@@ -1,0 +1,49 @@
+/* === Calendar Styles === */
+	#zone-news [data-widget-id="w-eco-cal"]{ padding: 0 !important; }
+
+	/* Base : on laisse le widget interne libre de grandir */
+	#economic-calendar-819954{ min-height: 0 !important; }
+
+	/* === MODE COMPACT (par défaut) — hauteur fixe + scroll interne === */
+	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller{
+	  height: clamp(200px, 55vh, 280px) !important;
+	  overflow: auto !important;
+	  overscroll-behavior: contain;
+	  -webkit-overflow-scrolling: touch;
+	  scrollbar-width: none;
+	  -ms-overflow-style: none;
+	}
+	[data-widget-id="w-eco-cal"].calendar--compact #ec-scroller::-webkit-scrollbar{
+	  width: 0; height: 0;
+	}
+
+	/* === MODE COMPACT + AUTOFIT — s'adapte à la hauteur des news (pas de scroll interne) === */
+	[data-widget-id="w-eco-cal"].calendar--compact.autofit #ec-scroller{
+	  height: auto !important;
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+
+	/* === MODE COLLAPSIBLE — quand ouvert, pas de scroll interne (taille auto) === */
+	[data-widget-id="w-eco-cal"].collapsible #ec-scroller{
+	  height: auto !important;
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+
+	/* On neutralise les conteneurs scroll internes du widget fxverify */
+	#economic-calendar-819954 .notablescroll,
+	#economic-calendar-819954 .content_table,
+	#economic-calendar-819954 .ec-fx-calendar-table,
+	#economic-calendar-819954 .ec-fx-table-container{
+	  max-height: none !important;
+	  overflow: visible !important;
+	}
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
