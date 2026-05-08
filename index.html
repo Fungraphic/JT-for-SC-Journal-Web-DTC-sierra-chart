@@ -350,10 +350,11 @@
     </aside>
   </div>
 <!-- Librairies (UMD) -->
-<script defer src="./assets/vendor/chart.umd.min.js" integrity="sha384-h2XyvoUqksdHpLTIghMZjKpLyvc5iNUdjaxovsGgc5hX1EOaiPbFSEpNxmJfz9dB" crossorigin="anonymous"></script>
-<script defer src="./assets/vendor/chartjs-adapter-date-fns.bundle.min.js" integrity="sha384-QrTO60sO4RJ61N2R9qXzS+ipc8vNMz5eQkfYGH33+8jvuFWVFRVu9colRCqUEaPd" crossorigin="anonymous"></script>
-<script defer src="./assets/vendor/hammer.min.js" integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm" crossorigin="anonymous"></script>
-<script defer src="./assets/vendor/chartjs-plugin-zoom.min.js" integrity="sha384-vP5Jlcx+XDoRRbi4nLRvrXhDCYM7jwrzy6F5vAwl+/aVCmf7zTdPzxXWJksXYrok" crossorigin="anonymous"></script>
+<!-- SRI hashes (for HTTP serving): sha384-h2XyvoUqksdHpLTIghMZjKpLyvc5iNUdjaxovsGgc5hX1EOaiPbFSEpNxmJfz9dB / QrTO60sO4RJ61N2R9qXzS+ipc8vNMz5eQkfYGH33+8jvuFWVFRVu9colRCqUEaPd / Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm / vP5Jlcx+XDoRRbi4nLRvrXhDCYM7jwrzy6F5vAwl+/aVCmf7zTdPzxXWJksXYrok -->
+<script defer src="./assets/vendor/chart.umd.min.js"></script>
+<script defer src="./assets/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script defer src="./assets/vendor/hammer.min.js"></script>
+<script defer src="./assets/vendor/chartjs-plugin-zoom.min.js"></script>
 
 <!-- Bootstrap Zoom (UMD = auto-enregistré) -->
 <script>
@@ -568,14 +569,27 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       try { this.ws = new WebSocket(this.url); }
       catch (e) { this.onError(e); return; }
+      this._timedOut = false;
       this._connectTimer = setTimeout(() => {
-        console.warn('[DTC] Connexion timeout (5s)');
-        this.ws.close();
-        this.onError(new Error('Délai de connexion dépassé (5s)'));
-      }, 5000);
-      this.ws.addEventListener('open', () => { clearTimeout(this._connectTimer); this.onOpen(); });
-      this.ws.addEventListener('close', ev => { clearTimeout(this._connectTimer); this.onClose(ev); });
-      this.ws.addEventListener('error', e => { clearTimeout(this._connectTimer); this.onError(e); });
+        this._timedOut = true;
+        console.warn('[DTC] Connexion timeout (15s)');
+        try { this.ws.close(); } catch(_) {}
+      }, 15000);
+      this.ws.addEventListener('open', () => {
+        clearTimeout(this._connectTimer);
+        this._timedOut = false;
+        this.onOpen();
+      });
+      this.ws.addEventListener('close', ev => {
+        clearTimeout(this._connectTimer);
+        if (!this._timedOut) this.onClose(ev);
+      });
+      this.ws.addEventListener('error', e => {
+        clearTimeout(this._connectTimer);
+        const wasTimeout = this._timedOut;
+        this._timedOut = false;
+        this.onError(wasTimeout ? new Error('Délai de connexion dépassé (15s)') : e);
+      });
       this.ws.addEventListener('message', ev => {
         const d = ev.data;
         if (typeof d === 'string') this._processChunk(d);
@@ -1948,9 +1962,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     client.onClose = () => {
 			const latEl = document.getElementById('latency');
-			if (latEl) latEl.textContent = '⏱ …';						
+			if (latEl) latEl.textContent = '⏱ …';					
       stopKpiPolling();
       stopFillsPolling();
+      if (client && client._hbTimer) { clearInterval(client._hbTimer); client._hbTimer = null; }
       state.connected = false;
       setStatus(false, 'Déconnecté');
       qs('#statusPill').textContent = 'Déconnecté';
@@ -1965,6 +1980,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (latEl) latEl.textContent = '⏱ …';			
       stopKpiPolling();
       stopFillsPolling();
+      if (client && client._hbTimer) { clearInterval(client._hbTimer); client._hbTimer = null; }
       state.connected = false;
       setStatus(false, 'Erreur connexion', true);
       qs('#statusPill').textContent = 'Erreur connexion';
