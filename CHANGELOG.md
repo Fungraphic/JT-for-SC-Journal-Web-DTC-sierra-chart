@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.32.0] - 2026-05-30
+
+### Changed
+- **Calendrier économique** : remplacement du widget fxverify (Cloudflare Turnstile bloqué) par un **proxy ForexFactory local** (`proxy_calendar.py`, port 5000)
+  - Scraping direct de `forexfactory.com/calendar/summary` → JSON formaté
+  - Cache serveur 5 min, filtres `day`, `impact`, `currency` côté proxy
+- **Filtres impact** : 3 cases à cocher 🔴 High / 🟠 Medium / 🟡 Low dans le header du calendrier (coche/décoche recharge les données dynamiquement)
+- **Mode collapsible par défaut** : le calendrier démarre en mode dépliable avec bouton Replier/Déplier (le mode compact est toujours disponible dans les paramètres)
+- Correction du débordement du calendrier sur les widgets suivants
+
+### Added
+- `proxy_calendar.py` — serveur Flask proxy ForexFactory (port 5000, venv `.venv-proxy/`)
+- `start.sh` — script de démarrage complet (proxy + serveur HTTP)
+
+### Removed
+- Dépendance fxverify.com (widget JS + iframe plus fonctionnels)
+
 ## [1.29.0] - 2025-05-08
 
 ### Changed

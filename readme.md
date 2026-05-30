@@ -54,7 +54,7 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les règles de contribution.
 - **Donuts** : Répartition gagnants/perdants & PnL par symbole
 - **Journal des trades** (table responsive)
 - **Paramètres** : thème (variables CSS), palette donuts, mode édition (drag des widgets), persistance layout + couleurs
-- **Calendrier économique** intégrable/pliable
+- **Calendrier économique** : données ForexFactory via proxy local, filtres impact (High/Medium/Low), mode pliable/dépliable
 
 ---
 
@@ -63,7 +63,9 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les règles de contribution.
 ```
 .
 ├── index.html                # Application principale (single-page)
+├── proxy_calendar.py         # Proxy Flask ForexFactory (port 5000)
 ├── serve.sh                  # Serveur HTTP minimal (Python 3)
+├── start.sh                  # Démarrage complet (proxy + HTTP)
 ├── CHANGELOG.md              # Historique des versions
 ├── CONTRIBUTING.md           # Guide de contribution
 ├── .editorconfig             # Conventions d'édition
@@ -88,6 +90,17 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les règles de contribution.
 
 ## Démarrer en local
 
+### 1. Lancer le proxy ForexFactory (obligatoire pour le calendrier)
+
+```bash
+cd JT-for-SC-Journal-Web-DTC-sierra-chart
+.venv-proxy/bin/python proxy_calendar.py   # port 5000
+```
+
+Le proxy scrape `forexfactory.com/calendar/summary` et sert le JSON sur `http://127.0.0.1:5000/calendar`. Cache 5 min, filtres `?day=today&impact=high,medium&currency=USD`.
+
+### 2. Lancer le dashboard
+
 ### Option A — Serveur HTTP (recommandé)
 
 ```bash
@@ -98,7 +111,13 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les règles de contribution.
 
 Puis ouvrir http://localhost:8888
 
-### Option B — Ouvrir directement le fichier
+### Option B — Démarrage complet (proxy + serveur)
+
+```bash
+./start.sh          # lance proxy_calendar.py + serve.sh
+```
+
+### Option C — Ouvrir directement le fichier
 
 Double-cliquer sur `index.html`. Selon le navigateur, certaines politiques de sécurité peuvent limiter des fonctions (WebSocket vers localhost fonctionne généralement, mais les CORS/EPR peuvent bloquer). Privilégier l'Option A.
 
