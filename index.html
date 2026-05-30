@@ -95,88 +95,117 @@
         </div>
       </div>
 
-<!-- ZONE NEWS — fxverify (hauteur fixée, scroll interne) -->
+<!-- ZONE NEWS — ForexFactory via proxy local -->
 
 
 <div class="drag-zone" id="zone-news">
   <div class="widget" data-widget-id="w-eco-cal">
     <div class="drag-handle" title="Déplacer">⋮⋮</div>
     <div id="ec-scroller">
-      <div id="economic-calendar-819954-inner"></div>
+      <table id="eco-cal-table" style="width:100%;border-collapse:collapse;font-size:11px;color:#cccfde">
+        <thead style="position:sticky;top:0;z-index:5;background:#1a1d2b">
+          <tr style="color:#8a8fa0;text-align:left">
+            <th style="padding:4px 4px;min-width:55px">Date</th>
+            <th style="padding:4px 4px;min-width:45px">Heure</th>
+            <th style="padding:4px 4px;min-width:35px">Dev</th>
+            <th style="padding:4px 4px;min-width:30px;text-align:center">Imp</th>
+            <th style="padding:4px 4px">Événement</th>
+            <th style="padding:4px 4px;min-width:48px;text-align:right">Actuel</th>
+            <th style="padding:4px 4px;min-width:48px;text-align:right">Prévu</th>
+            <th style="padding:4px 4px;min-width:48px;text-align:right">Préc.</th>
+          </tr>
+        </thead>
+        <tbody id="eco-cal-body">
+          <tr><td colspan="8" style="padding:16px;text-align:center;color:#666">Chargement…</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<!-- Script fxverify + init -->
-<script src="https://fxverify.com/Content/remote/remote-calendar-widget.js" type="text/javascript"></script>
-
 <script>
-/* Override: ne plus forcer la hauteur de l’iframe au viewport */
-(function () {
-  window.resizeCalendarWidget = function (data) {
-    var containerId = data.containerId;
-    var targetHeight = Math.max(0, Math.ceil(data.targetHeight || 0));
-    var menuHeight = data.menuHeaderHeight || 0;
+// Calendrier économique ForexFactory via proxy local — filtrage par impact
+(function() {
+  const PROXY_BASE = 'http://127.0.0.1:5000/calendar?day=today&currency=USD';
+  const BODY   = document.getElementById('eco-cal-body');
+  const IMPACT = {high:'🔴', medium:'🟠', low:'🟡', holiday:'⚪'};
+  const IMP_T  = {high:'High', medium:'Medium', low:'Low', holiday:'Holiday'};
 
-    var ifrms = document.querySelectorAll('iframe[calendar-id=ifrm-cbf-' + containerId + ']');
-    for (var i = 0; i < ifrms.length; i++) {
-      var rect = ifrms[i].getBoundingClientRect();
-      var offsetLeft = rect.left;
-      var offsetTop = rect.top;
+  function fmt(val) {
+    if (!val || val === '') return '–';
+    return val;
+  }
 
-      // ✅ hauteur EXACTE remontée par l'iframe (pas de fallback viewport)
-      var frameHeight = targetHeight;
-      ifrms[i].style.height = frameHeight + 'px';
-
-      // Informe l’iframe de la géométrie (comme la version d’origine)
-      try {
-        ifrms[i].contentWindow.postMessage({
-          type: 'onLayoutChange',
-          data: {
-            width: window.innerWidth,
-            height: window.innerHeight,
-            frameHeight: frameHeight,
-            offsetLeft: offsetLeft,
-            offsetTop: offsetTop,
-            scrollX: window.scrollX,
-            scrollY: window.scrollY
-          }
-        }, '*');
-      } catch (e) {}
-
-      // Ajuste les conteneurs “sticky” du script fxverify
-      var headers = document.querySelectorAll('#' + containerId + '-container .stickyContainer');
-      for (var j = 0; j < headers.length; j++) {
-        var header = headers[j];
-        header.style.top = menuHeight + 'px';
-        var headerHeight = frameHeight - menuHeight;
-        header.style.height = headerHeight + 'px';
-
-        var headerElem = header.getElementsByClassName('stickyHeader')[0];
-        var contentElem = header.getElementsByClassName('stickyContent')[0];
-        if (headerElem && contentElem) {
-          var h = headerElem.offsetHeight;
-          if (h > 0) contentElem.style.top = h + 'px';
-        }
-      }
+  function render(events) {
+    if (!events.length) {
+      BODY.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#666">Aucun événement</td></tr>';
+      return;
     }
-  };
+    let html = '', lastDate = '';
+    for (const e of events) {
+      const dateRow = e.date !== lastDate;
+      lastDate = e.date;
+      const imp  = IMPACT[e.impact] || '⚪';
+      const impT = IMP_T[e.impact] || e.impact;
+      const bw   = e.actualBetterWorse;
+      const actClass = bw === 1 ? 'color:#39ad39;font-weight:700' : bw === 2 ? 'color:#cc0000;font-weight:700' : '';
+      const rev = e.revision ? '<span style="font-size:9px;color:#8a8fa0"> (' + e.revision + ')</span>' : '';
+      html += '<tr style="' + (dateRow ? 'border-top:1px solid #2a2e39' : '') + '">' +
+        '<td style="padding:3px 4px;font-weight:' + (dateRow ? '700' : '400') + ';color:' + (dateRow ? '#e0e0e0' : '#8a8fa0') + '">' + (dateRow ? e.date : '') + '</td>' +
+        '<td style="padding:3px 4px;color:#8a8fa0">' + e.time + '</td>' +
+        '<td style="padding:3px 4px;font-weight:600">' + e.currency + '</td>' +
+        '<td style="padding:3px 4px;text-align:center" title="' + impT + '">' + imp + '</td>' +
+        '<td style="padding:3px 4px">' + e.event + '</td>' +
+        '<td style="padding:3px 4px;text-align:right;' + actClass + '">' + fmt(e.actual) + '</td>' +
+        '<td style="padding:3px 4px;text-align:right;color:#8a8fa0">' + fmt(e.forecast) + '</td>' +
+        '<td style="padding:3px 4px;text-align:right;color:#8a8fa0">' + fmt(e.previous) + rev + '</td>' +
+      '</tr>';
+    }
+    BODY.innerHTML = html;
+  }
+
+  async function load() {
+    // Récupère les cases à cocher (créées dynamiquement par setupCalendarSettings)
+    const cbHigh   = document.getElementById('eco-filt-high');
+    const cbMedium = document.getElementById('eco-filt-medium');
+    const cbLow    = document.getElementById('eco-filt-low');
+
+    const impacts = [];
+    if (!cbHigh || cbHigh.checked)   impacts.push('high');
+    if (!cbMedium || cbMedium.checked) impacts.push('medium');
+    if (!cbLow || cbLow.checked)      impacts.push('low');
+
+    if (!impacts.length) {
+      BODY.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#666">Cochez au moins un filtre</td></tr>';
+      return;
+    }
+
+    const url = PROXY_BASE + '&impact=' + impacts.join(',');
+    try {
+      var resp = await fetch(url);
+      var data = await resp.json();
+      render(data);
+    } catch (err) {
+      BODY.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:#cc0000">Erreur proxy: ' + err.message + '</td></tr>';
+    }
+  }
+
+  // Bind les checkboxes quand elles apparaissent (créées par setupCalendarSettings)
+  function bindFilters() {
+    ['eco-filt-high', 'eco-filt-medium', 'eco-filt-low'].forEach(function(id) {
+      var cb = document.getElementById(id);
+      if (cb && !cb._ecoBound) {
+        cb.addEventListener('change', load);
+        cb._ecoBound = true;
+      }
+    });
+  }
+
+  load();
+  // Réessayer de binder les filtres après que setupCalendarSettings a créé le header
+  setTimeout(bindFilters, 200);
+  setTimeout(bindFilters, 1000);
 })();
-</script>
-
-<script>
-	RemoteCalendar({
-		Lang:"fr",
-		DefaultTime:"today",
-		DefaultTheme:"dark",
-		Url:"https://fxverify.com",
-		SubPath:"economic-calendar",
-		IsShowEmbedButton:false,
-		DefaultCountries:"USD",
-		DefaultImpacts:"HIGH,MEDIUM",
-		ContainerId:"economic-calendar-819954-inner"
-	});
-
 </script>
 
       <!-- ZONE CHARTS 1 -->
@@ -320,8 +349,8 @@
 		  <div class="setting-row" style="grid-template-columns: 1fr auto;">
 			<label for="calendarMode">Mode d’affichage</label>
 			<select id="calendarMode">
-			  <option value="compact" selected>Compact (scroll interne)</option>
-			  <option value="collapsible">Dépliable (pliable/dépliable)</option>
+			  <option value="compact">Compact (scroll interne)</option>
+			  <option value="collapsible" selected>Dépliable (pliable/dépliable)</option>
 			</select>
 			<label class="toggle" id="calendarAutofitRow" style="display:none; margin-top:6px;">
 			  <input type="checkbox" id="calendarAutofit">
@@ -2925,6 +2954,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		  header.className = 'widget-header';
 		  header.innerHTML = `
 			<div class="widget-title">📅 Calendrier économique</div>
+			<div class="eco-filters" style="display:flex;align-items:center;gap:10px;margin-left:auto">
+			  <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#8a8fa0"><input type="checkbox" id="eco-filt-high" checked style="accent-color:#e03030;width:12px;height:12px"><span>🔴 High</span></label>
+			  <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#8a8fa0"><input type="checkbox" id="eco-filt-medium" checked style="accent-color:#e08830;width:12px;height:12px"><span>🟠 Medium</span></label>
+			  <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px;color:#8a8fa0"><input type="checkbox" id="eco-filt-low" style="accent-color:#d4c030;width:12px;height:12px"><span>🟡 Low</span></label>
+			</div>
 			<button class="toggle-collapse" type="button" aria-expanded="true" aria-controls="ec-scroller">Replier</button>
 		  `;
 		  // on insère le header juste avant le scroller
@@ -2997,19 +3031,20 @@ document.addEventListener('DOMContentLoaded', () => {
 		try { localStorage.setItem(MODE_KEY, mode); } catch {}
 	  }
 
-	  // ===== INIT (valeurs sauvegardées) =====
-	  const savedMode      = localStorage.getItem(MODE_KEY) || 'compact';
-	  const savedAutofit   = localStorage.getItem(AUTO_KEY) === '1';
+	  // ===== INIT — toujours collapsible (le mode compact casse le header avec les filtres) =====
+	  try { localStorage.setItem(MODE_KEY, 'collapsible'); } catch {}
 	  const savedCollapsed = localStorage.getItem(COLLAPSED_KEY) === '1';
 
-	  if (selMode)      selMode.value        = savedMode;
-	  if (chkAutofit)   chkAutofit.checked   = savedAutofit;
+	  if (selMode) selMode.value = 'collapsible';
 	  if (chkCollapsed) chkCollapsed.checked = savedCollapsed;
 
-	  applyMode(savedMode);
+	  applyMode('collapsible');
+	  if (savedCollapsed) setCollapsed(true);
 
 	  // ===== LISTENERS =====
-	  if (selMode) selMode.addEventListener('change', () => applyMode(selMode.value));
+	  if (selMode) selMode.addEventListener('change', () => {
+		applyMode(selMode.value);
+	  });
 
 	  if (chkCollapsed) chkCollapsed.addEventListener('change', () => {
 		if (!selMode || selMode.value !== 'collapsible') return;
